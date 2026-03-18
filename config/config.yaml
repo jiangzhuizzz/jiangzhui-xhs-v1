@@ -1,23 +1,61 @@
-# 配置文件说明
+# 小红书运营项目配置
 
-# 飞书配置
+# ==================== 飞书配置 ====================
 feishu:
   app_id: "cli_a9f074cb11f81bd9"
   app_secret: "i1r7ydU3JryTpS9rCMUdKbUfaVcvzsVL"
   app_token: "NBnHb1YvLabIGXsKnzHcki6jnwf"
-  table_id_topics: "tblyTocFNjBpjSyM"
-  table_id_notes: "tbltnt33U61XIkUa"   # 创建后自动填充
+  table_id_topics: "tblyTocFNjBpjSyM"   # 选题库
+  table_id_notes: "tbltnt33U61XIkUa"      # 笔记库
 
-# 小红书配置
+# ==================== 小红书配置 ====================
 xiaohongshu:
-  openclaw_url: "http://127.0.0.1:18789"  # OpenClaw 地址
-  cdp_port: 18789                          # CDP 端口
+  openclaw_url: "http://127.0.0.1:18789"
+  cdp_port: 18789
 
-# 图片配置
+# ==================== 图片配置 ====================
 image:
-  theme: "sketch"      # 主题
-  mode: "auto-split"   # 分页模式
+  theme: "sketch"
+  mode: "auto-split"
 
-# 违禁词配置
+# ==================== 违禁词配置 ====================
 check:
-  max_retries: 3       # 最大检测次数
+  max_retries: 3
+
+# ==================== 运营提示词（可直接调用） ====================
+# 使用方式：读取此配置的 prompts 字段，注入到 AI 生成
+
+prompts:
+  # 账号状态说明
+  account_status: |
+    当前账号状态：新账号（冷启动），粉丝 0-500
+    内容策略：情感类、生活类为主，少发营销内容
+    安全提示：禁止引导私信、禁止承诺 100% 下款
+
+  # 内容类型映射
+  content_types:
+    情感共鸣: "情感故事、心情分享，适合晚上发"
+    武汉生活: "过早、美食、周末玩法，适合中午/傍晚"
+    贷款干货: "公积金、信贷知识，需案例包装"
+    工具类: "测评、教程类"
+
+  # 生成模板
+  template: |
+    # {{标题}}
+    
+    {{正文}}
+    
+    #{{话题1}} #{{话题2}} #{{话题3}}
+
+  # 违禁词提醒
+  forbidden_words:
+    - "互粉"
+    - "找我"
+    - "私信"
+    - "贷款中介"
+    - "包下款"
+    - "100%"
+
+# ==================== 图片输出目录 ====================
+output:
+  picture_dir: "./picture"
