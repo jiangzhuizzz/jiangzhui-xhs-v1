@@ -1,0 +1,5 @@
+# Python 依赖
+
+markdown
+pyyaml
+playwright
