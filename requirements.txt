@@ -1,6 +1,12 @@
 # Python 依赖
+# 用于小红书自动化内容生成与发布系统
 
-markdown
-pyyaml
-playwright
-requests
+# 核心依赖
+markdown>=3.4.0          # Markdown 转 HTML
+pyyaml>=6.0              # YAML 配置文件解析
+playwright>=1.40.0       # 浏览器自动化（图片渲染）
+requests>=2.31.0         # HTTP 请求（飞书 API）
+
+# 可选依赖（用于特定功能）
+# pillow>=10.0.0         # 图片处理（如需本地图片优化）
+# opencv-python>=4.8.0   # 视频处理（如需视频封面生成）

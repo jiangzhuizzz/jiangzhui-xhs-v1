@@ -1,22 +1,23 @@
-# 小红书运营项目配置
+# 小红书运营项目配置模板
+# 复制此文件为 config.yaml 并填写实际配置
 
 # ==================== 飞书配置 ====================
 feishu:
-  app_id: "cli_a9f074cb11f81bd9"
-  app_secret: "i1r7ydU3JryTpS9rCMUdKbUfaVcvzsVL"
-  app_token: "NBnHb1YvLabIGXsKnzHcki6jnwf"
-  table_id_topics: "tblyTocFNjBpjSyM"   # 选题库
-  table_id_notes: "tbltnt33U61XIkUa"      # 笔记库
+  app_id: "your_app_id_here"           # 飞书应用 ID
+  app_secret: "your_app_secret_here"   # 飞书应用密钥
+  app_token: "your_app_token_here"     # 飞书多维表格 App Token
+  table_id_topics: "your_table_id"     # 选题库表格 ID
+  table_id_notes: "your_table_id"      # 笔记库表格 ID
 
 # ==================== 小红书配置 ====================
 xiaohongshu:
-  openclaw_url: "http://127.0.0.1:18789"
-  cdp_port: 18789
+  openclaw_url: "http://127.0.0.1:18789"  # OpenClaw Gateway 地址
+  cdp_port: 18789                          # Chrome DevTools Protocol 端口
 
 # ==================== 图片配置 ====================
 image:
-  theme: "sketch"
-  mode: "auto-split"
+  theme: "sketch"        # 主题: default/playful-geometric/neo-brutalism/botanical/professional/retro/terminal/sketch
+  mode: "auto-split"     # 分页模式: separator/auto-fit/auto-split/dynamic
 
 # ==================== 工作流环节 ====================
 # 完整流程：选题 → 初稿 → 违禁词检测 → 配图 → 人工审核 → 待发布 → 已发布
@@ -75,8 +76,8 @@ output:
 
 # ==================== Telegram 通知配置 ====================
 telegram:
-  enabled: true
-  chat_id: "5345571859"  # 江sir 的 Telegram ID
+  enabled: true                    # 是否启用 Telegram 通知
+  chat_id: "your_telegram_id"      # 你的 Telegram ID（可通过 @userinfobot 获取）
   notify_on:
     - sync_success    # Git 同步成功
     - sync_failure    # Git 同步失败
