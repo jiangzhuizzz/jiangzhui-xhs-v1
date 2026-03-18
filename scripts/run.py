@@ -134,15 +134,14 @@ def step_generate_and_check(config, client, args):
     # 保存初稿到飞书
     table_id = config["feishu"]["table_id_notes"]
     
-    # 版本记录
-    version_record = f"[{now}] 初稿版本1\n"
-    
     fields = {
-        "标题": title,
-        "正文": result_content,
-        "话题标签": tags,
-        "状态": "初稿" if is_safe else "检测失败",
-        "版本记录": version_record
+        "标题": title,  # 兼容旧字段
+        "正文": result_content,  # 兼容旧字段
+        "话题标签": tags,  # 兼容旧字段
+        "初稿标题": title,
+        "初稿正文": result_content,
+        "初稿话题标签": tags,
+        "状态": "初稿" if is_safe else "检测失败"
     }
     
     result = client.create_table_record(table_id, fields)
@@ -239,16 +238,31 @@ def step_publish(config, client, args):
     print("   （自动上传图片和文案）")
     print("✅ 已发布到小红书")
     
-    # 更新飞书
+    # 更新飞书 - 保存发布版本的内容
     # 发布时间需要 Unix 时间戳
     import time
     timestamp = int(time.time())
-    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    
+    # 获取初稿内容作为发布内容（也可以人工修改）
+    # 这里简化处理，直接用初稿内容
+    table_id = config["feishu"]["table_id_notes"]
+    records = client.get_table_records(table_id)
+    record = None
+    for r in records:
+        if r.get("record_id") == args.record_id:
+            record = r
+            break
+    
+    draft_title = record.get("fields", {}).get("初稿标题", "")
+    draft_content = record.get("fields", {}).get("初稿正文", "")
+    draft_tags = record.get("fields", {}).get("初稿话题标签", "")
     
     fields = {
         "状态": "已发布",
         "发布时间": timestamp,
-        "版本记录": f"[{now}] 已发布\n"
+        "发布标题": draft_title,
+        "发布正文": draft_content,
+        "发布话题标签": draft_tags
     }
     
     client.update_table_record(table_id, args.record_id, fields)
@@ -297,18 +311,20 @@ def step_show_history(config, client, args):
         
         fields = record.get("fields", {})
         
-        print(f"📝 标题: {fields.get('标题', 'N/A')}")
         print(f"📋 状态: {fields.get('状态', 'N/A')}")
-        print(f"🏷️  话题: {fields.get('话题标签', 'N/A')}")
         print(f"📅 发布时间: {fields.get('发布时间', 'N/A')}")
         
-        print(f"\n📄 正文:")
+        print(f"\n📝 初稿版本:")
         print("-" * 40)
-        print(fields.get("正文", "N/A"))
-        print("-" * 40)
+        print(f"标题: {fields.get('初稿标题', 'N/A')}")
+        print(f"正文: {fields.get('初稿正文', 'N/A')[:100]}...")
+        print(f"话题: {fields.get('初稿话题标签', 'N/A')}")
         
-        print(f"\n📒 版本记录:")
-        print(fields.get("版本记录", "无"))
+        print(f"\n📝 发布版本:")
+        print("-" * 40)
+        print(f"标题: {fields.get('发布标题', 'N/A')}")
+        print(f"正文: {fields.get('发布正文', 'N/A')[:100] if fields.get('发布正文') else '未发布'}")
+        print(f"话题: {fields.get('发布话题标签', 'N/A')}")
 
 
 if __name__ == "__main__":
