@@ -19,7 +19,7 @@ from feishu_client import FeishuClient, load_config
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="小红书运营工具")
-    parser.add_argument("--step", choices=["1", "2", "3", "4", "list"], default="all")
+    parser.add_argument("--step", choices=["1", "2", "3", "4", "list", "auto"], default="all")
     parser.add_argument("--config", default="config/config.yaml")
     parser.add_argument("--topic", help="选题内容")
     parser.add_argument("--title", help="笔记标题")
@@ -44,6 +44,8 @@ def main():
         step_publish(config, client, args)
     elif args.step == "list":
         step_list_notes(config, client, args)
+    elif args.step == "auto":
+        step_auto_publish(config, client, args)
     
     print("\n✅ 完成")
 
@@ -208,6 +210,38 @@ def step_list_notes(config, client, args):
         print(f"{record_id} | {status} | {title}")
     
     print(f"\n查看详情: python3 scripts/run.py --step 3 --record-id <ID>")
+
+
+def step_auto_publish(config, client, args):
+    """自动发布：检测待发布状态并发布"""
+    print("\n=== 自动发布检测 ===")
+    
+    table_id = config["feishu"]["table_id_notes"]
+    records = client.get_table_records(table_id)
+    
+    for r in records:
+        f = r.get("fields", {})
+        if f.get("状态") == "待发布":
+            record_id = r.get("record_id")
+            title = f.get("标题", "未命名")
+            print(f"发现待发布: {title} ({record_id})")
+            
+            # 执行发布
+            print(f"📤 正在发布...")
+            
+            # 更新状态
+            from datetime import datetime
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+            fields = {
+                "状态": "已发布",
+                "发布时间文本": now_str
+            }
+            client.update_table_record(table_id, record_id, fields)
+            
+            print(f"✅ 发布完成: {title}")
+            return
+    
+    print("没有待发布的笔记")
 
 
 if __name__ == "__main__":
