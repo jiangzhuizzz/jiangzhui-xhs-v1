@@ -2,10 +2,11 @@
 
 # 飞书配置
 feishu:
-  app_id: "cli_xxxxxxxxxxxxx"      # 飞书应用 ID
-  app_secret: "xxxxxxxxxxxxxxxxxx"  # 飞书应用密钥
-  table_id_topics: "tblxxxxxxxxxx" # 选题库多维表格 ID
-  table_id_notes: "tblxxxxxxxxxx"   # 笔记库多维表格 ID
+  app_id: "cli_a9f074cb11f81bd9"
+  app_secret: "i1r7ydU3JryTpS9rCMUdKbUfaVcvzsVL"
+  app_token: "NBnHb1YvLabIGXsKnzHcki6jnwf"
+  table_id_topics: "tblyTocFNjBpjSyM"
+  table_id_notes: "tbltnt33U61XIkUa"   # 创建后自动填充
 
 # 小红书配置
 xiaohongshu:
