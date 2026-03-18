@@ -172,11 +172,12 @@ def step_add_images(config, client, args):
     print("   （调用 render_xhs.py 渲染图片）")
     print("✅ 图片渲染完成")
     
-    # 更新飞书
+    # 更新飞书（图片字段暂不传，默认用本地路径）
     table_id = config["feishu"]["table_id_notes"]
     fields = {
-        "封面图": images[0] if images else "",
-        "内容图": ",".join(images) if images else "",
+        # 飞书图片字段需要特殊格式，暂时跳过
+        # "封面图": images[0] if images else "",
+        # "内容图": ",".join(images) if images else "",
         "状态": "配图完成"
     }
     
@@ -231,9 +232,12 @@ def step_publish(config, client, args):
     print("✅ 已发布到小红书")
     
     # 更新飞书
+    # 发布时间需要 Unix 时间戳
+    import time
+    timestamp = int(time.time())
     fields = {
         "状态": "已发布",
-        "发布时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "发布时间": timestamp
     }
     
     client.update_table_record(table_id, args.record_id, fields)
