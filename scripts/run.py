@@ -180,9 +180,12 @@ def step_publish(config, client, args):
     
     # 更新状态
     import time
+    from datetime import datetime
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    
     fields = {
         "状态": "已发布",
-        "发布时间": int(time.time())
+        "发布时间文本": now_str
     }
     
     client.update_table_record(table_id, args.record_id, fields)
