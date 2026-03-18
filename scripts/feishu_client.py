@@ -89,32 +89,55 @@ class FeishuClient:
     
     # ===== 云空间文件操作 =====
     
-    def upload_image(self, file_path: str, token: str = None) -> str:
+    def upload_image(self, file_path: str, parent_node: str = None) -> str:
         """上传图片到飞书云空间"""
-        url = "https://open.feishu.cn/open-apis/drive/v1/files/upload_all"
+        import os
+        import uuid
         
-        with open(file_path, 'rb') as f:
+        parent_node = parent_node or "nodcnzQ6KyqOwfj6O10mhSE4tbf"
+        
+        # 读取文件
+        file_size = os.path.getsize(file_path)
+        with open(file_path, "rb") as f:
             file_content = f.read()
         
-        file_name = os.path.basename(file_path)
-        headers = {"Authorization": f"Bearer {self.access_token}"}
-        
         # 构建 multipart 请求
-        files = {
-            'file': (file_name, file_content, 'image/png')
-        }
-        data = {
-            'parent_node': token or "root",
-            'file_name': file_name
+        boundary = "----WebKitFormBoundary" + str(uuid.uuid4()).replace("-", "")[:16]
+        
+        body = f"--{boundary}\r\n"
+        body += 'Content-Disposition: form-data; name="file_name"\r\n\r\n'
+        body += f"{os.path.basename(file_path)}\r\n"
+        
+        body += f"--{boundary}\r\n"
+        body += 'Content-Disposition: form-data; name="parent_type"\r\n\r\n'
+        body += "explorer\r\n"
+        
+        body += f"--{boundary}\r\n"
+        body += 'Content-Disposition: form-data; name="parent_node"\r\n\r\n'
+        body += f"{parent_node}\r\n"
+        
+        body += f"--{boundary}\r\n"
+        body += 'Content-Disposition: form-data; name="size"\r\n\r\n'
+        body += f"{file_size}\r\n"
+        
+        body += f"--{boundary}\r\n"
+        body += f'Content-Disposition: form-data; name="file"; filename="{os.path.basename(file_path)}"\r\n'
+        body += "Content-Type: image/png\r\n\r\n"
+        body = body.encode() + file_content + f"\r\n--{boundary}--\r\n".encode()
+        
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": f"multipart/form-data; boundary={boundary}"
         }
         
-        resp = requests.post(url, headers=headers, files=files, data=data)
+        url = "https://open.feishu.cn/open-apis/drive/v1/files/upload_all"
+        resp = requests.post(url, data=body, headers=headers)
         result = resp.json()
         
         if result.get("code") == 0:
-            return result["data"]["file"]["token"]
+            return result["data"]["file_token"]
         else:
-            raise Exception(f"上传图片失败: {result}")
+            raise Exception(f"上传失败: {result}")
     
     def get_download_url(self, file_token: str) -> str:
         """获取文件下载链接"""
