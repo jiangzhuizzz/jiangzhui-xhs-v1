@@ -89,39 +89,84 @@ class FeishuClient:
     
     # ===== 云空间文件操作 =====
     
-    def upload_image(self, file_path: str, parent_node: str = None) -> str:
-        """上传图片到飞书云空间"""
+    def upload_image(self, file_path: str, parent_node: str = None, for_bitable_attachment: bool = False) -> str:
+        """上传图片到飞书
+        
+        Args:
+            file_path: 图片文件路径
+            parent_node: 云空间目录节点ID
+            for_bitable_attachment: 是否用于多维表格附件字段（强制用drive API返回file_token）
+        Returns:
+            file_token: 用于写入多维表格附件字段
+        """
         import os
         import uuid
         
-        parent_node = parent_node or "nodcnzQ6KyqOwfj6O10mhSE4tbf"
-        
         # 读取文件
         file_size = os.path.getsize(file_path)
+        file_name = os.path.basename(file_path)
+        
+        # 方法1: 用 image/v4/upload (返回 image_key，可用于图片字段)
+        # 仅在不强制用 drive API 时尝试
+        if not for_bitable_attachment:
+            try:
+                headers = {"Authorization": f"Bearer {self.access_token}"}
+                
+                files = {
+                    'file': (file_name, open(file_path, 'rb'), 'image/png')
+                }
+                data = {
+                    "image_type": "message",
+                    "parent_type": "bitable",
+                    "parent_id": "upload",
+                    "size": str(file_size)
+                }
+                
+                url = "https://open.feishu.cn/open-apis/image/v4/upload/"
+                resp = requests.post(url, files=files, data=data, headers=headers)
+                result = resp.json()
+                
+                if result.get("code") == 0:
+                    return result["data"]["image_key"]
+            except Exception as e:
+                print(f"image API 失败: {e}")
+        
+        # 方法2: 用 drive/v1/files/upload_all (云空间/多维表格)
+        # for_bitable_attachment=True 时用 bitable 类型上传，返回 file_token
+        print("尝试 drive API...")
         with open(file_path, "rb") as f:
             file_content = f.read()
         
-        # 构建 multipart 请求
         boundary = "----WebKitFormBoundary" + str(uuid.uuid4()).replace("-", "")[:16]
         
         body = f"--{boundary}\r\n"
         body += 'Content-Disposition: form-data; name="file_name"\r\n\r\n'
-        body += f"{os.path.basename(file_path)}\r\n"
+        body += f"{file_name}\r\n"
         
         body += f"--{boundary}\r\n"
         body += 'Content-Disposition: form-data; name="parent_type"\r\n\r\n'
-        body += "explorer\r\n"
+        
+        # 关键：用于多维表格附件时用 bitable，否则用 explorer
+        if for_bitable_attachment:
+            body += "bitable\r\n"
+        else:
+            body += "explorer\r\n"
         
         body += f"--{boundary}\r\n"
         body += 'Content-Disposition: form-data; name="parent_node"\r\n\r\n'
-        body += f"{parent_node}\r\n"
+        
+        # 关键：用于多维表格附件时用 app_token，否则用 parent_node
+        if for_bitable_attachment:
+            body += f"{self.config['feishu'].get('app_token', '')}\r\n"
+        else:
+            body += f"{parent_node or 'nodcnzQ6KyqOwfj6O10mhSE4tbf'}\r\n"
         
         body += f"--{boundary}\r\n"
         body += 'Content-Disposition: form-data; name="size"\r\n\r\n'
         body += f"{file_size}\r\n"
         
         body += f"--{boundary}\r\n"
-        body += f'Content-Disposition: form-data; name="file"; filename="{os.path.basename(file_path)}"\r\n'
+        body += f'Content-Disposition: form-data; name="file"; filename="{file_name}"\r\n'
         body += "Content-Type: image/png\r\n\r\n"
         body = body.encode() + file_content + f"\r\n--{boundary}--\r\n".encode()
         
@@ -138,6 +183,50 @@ class FeishuClient:
             return result["data"]["file_token"]
         else:
             raise Exception(f"上传失败: {result}")
+    
+    def upload_images_to_record(self, table_id: str, record_id: str, 
+                                 cover_image: str = None, 
+                                 content_images: list = None) -> Dict:
+        """上传图片到多维表格记录的封面图和内容图字段
+        
+        Args:
+            table_id: 表格ID
+            record_id: 记录ID
+            cover_image: 封面图文件路径
+            content_images: 内容图文件路径列表
+        
+        Returns:
+            更新结果
+        """
+        fields = {}
+        
+        # 上传封面图
+        if cover_image:
+            print(f"📤 上传封面图: {cover_image}")
+            file_token = self.upload_image(cover_image, for_bitable_attachment=True)
+            fields["封面图"] = [{"file_token": file_token}]
+            print(f"   ✅ {file_token}")
+        
+        # 上传内容图（多张，按顺序）
+        if content_images:
+            print(f"📤 上传{len(content_images)}张内容图...")
+            content_tokens = []
+            for i, img_path in enumerate(content_images, 1):
+                print(f"   [{i}/{len(content_images)}] {img_path}")
+                file_token = self.upload_image(img_path, for_bitable_attachment=True)
+                content_tokens.append({"file_token": file_token})
+                print(f"   ✅ {file_token}")
+            fields["内容图"] = content_tokens
+        
+        if not fields:
+            print("⚠️ 没有图片需要上传")
+            return {}
+        
+        # 更新记录
+        print(f"📝 更新记录 {record_id}...")
+        result = self.update_table_record(table_id, record_id, fields)
+        print(f"✅ 更新完成")
+        return result
     
     def get_download_url(self, file_token: str) -> str:
         """获取文件下载链接"""

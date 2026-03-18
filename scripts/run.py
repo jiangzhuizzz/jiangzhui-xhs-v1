@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
 小红书运营主脚本（简化版）
-工作流：选题 → 生成初稿+检测 → 人工审核 → 发布
+工作流：选题 → 生成初稿+渲染图片+上传飞书 → 人工审核 → 发布
 """
 
 import os
 import sys
 import yaml
 import json
+import subprocess
 from pathlib import Path
 from datetime import datetime
 
@@ -26,6 +27,9 @@ def main():
     parser.add_argument("--content", help="笔记正文")
     parser.add_argument("--tags", help="话题标签")
     parser.add_argument("--record-id", help="飞书记录ID")
+    parser.add_argument("--images", help="图片目录路径（自动渲染）")
+    parser.add_argument("--cover", help="封面图路径")
+    parser.add_argument("--pics", nargs="*", help="内容图路径列表")
     
     args = parser.parse_args()
     
@@ -50,6 +54,50 @@ def main():
     print("\n✅ 完成")
 
 
+def render_image(content: str, output_dir: str, theme: str = "sketch") -> list:
+    """渲染图片
+    
+    Args:
+        content: Markdown内容
+        output_dir: 输出目录
+        theme: 主题风格
+    
+    Returns:
+        生成的图片路径列表
+    """
+    import tempfile
+    
+    # 写入临时文件
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
+        f.write(content)
+        temp_file = f.name
+    
+    try:
+        # 执行渲染
+        cmd = [
+            "python3", "scripts/render_xhs.py",
+            "--theme", theme,
+            "--mode", "auto-split",
+            "-o", output_dir,
+            temp_file
+        ]
+        
+        result = subprocess.run(cmd, cwd=Path(__file__).parent.parent, 
+                               capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            print(f"⚠️ 渲染失败: {result.stderr}")
+            return []
+        
+        # 获取生成的文件
+        pic_dir = Path(output_dir)
+        images = sorted(pic_dir.glob("*.png"))
+        return [str(img) for img in images]
+    
+    finally:
+        os.unlink(temp_file)
+
+
 def step_choose_topic(config, client, args):
     """第1步：选题"""
     print("\n=== 第1步：选题 ===")
@@ -70,8 +118,8 @@ def step_choose_topic(config, client, args):
 
 
 def step_generate_draft(config, client, args):
-    """第2步：生成初稿+检测"""
-    print("\n=== 第2步：生成初稿+检测 ===")
+    """第2步：生成初稿+渲染图片+上传飞书"""
+    print("\n=== 第2步：生成初稿+渲染图片+上传飞书 ===")
     
     if not args.topic and not args.content:
         print("❌ 需要 --topic 或 --content")
@@ -103,6 +151,35 @@ def step_generate_draft(config, client, args):
         print("✅ 初稿已保存，状态=初稿")
     else:
         print("⚠️ 检测到违禁词，请修改")
+    
+    # 自动渲染图片
+    if args.images:
+        image_dir = args.images
+    else:
+        # 自动生成
+        from datetime import datetime
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        safe_title = title.replace("/", "-").replace(" ", "-")[:20]
+        image_dir = f"picture/{date_str}-{safe_title}"
+    
+    print(f"\n🎨 渲染图片到: {image_dir}")
+    images = render_image(content, image_dir)
+    
+    if images:
+        print(f"✅ 生成 {len(images)} 张图片")
+        
+        # 上传到飞书
+        print(f"\n📤 上传到飞书...")
+        cover_image = images[0] if len(images) > 0 else None
+        content_images = images[1:] if len(images) > 1 else None
+        
+        client.upload_images_to_record(
+            table_id, record_id,
+            cover_image=cover_image,
+            content_images=content_images
+        )
+    else:
+        print("⚠️ 没有生成图片")
     
     print(f"\n📝 记录ID: {record_id}")
     print(f"📝 人工审核：在飞书修改标题/正文/话题标签")
