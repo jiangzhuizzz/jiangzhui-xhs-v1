@@ -23,6 +23,12 @@ class FeishuClient:
     
     def _load_config(self, config_path: str) -> Dict:
         """加载配置文件"""
+        # 支持绝对路径和相对路径
+        if not os.path.isabs(config_path):
+            # 相对于脚本所在目录
+            base_dir = Path(__file__).parent.parent
+            config_path = base_dir / config_path
+        
         with open(config_path, 'r', encoding='utf-8') as f:
             return yaml.safe_load(f)
     
@@ -37,7 +43,8 @@ class FeishuClient:
         resp = requests.post(url, headers=headers, json=data)
         result = resp.json()
         if result.get("code") == 0:
-            self.access_token = result["data"]["access_token"]
+            # 新版飞书 API 返回格式
+            self.access_token = result.get("tenant_access_token") or result.get("data", {}).get("access_token")
         else:
             raise Exception(f"获取 access_token 失败: {result}")
     
@@ -58,7 +65,8 @@ class FeishuClient:
     
     def get_table_records(self, table_id: str, filter_conditions: str = None) -> List[Dict]:
         """获取多维表格记录"""
-        url = f"https://open.feishu.cn/open-apis/bitable/v1/tables/{table_id}/records"
+        app_token = self.config["feishu"].get("app_token", "")
+        url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records"
         params = {"page_size": 100}
         if filter_conditions:
             params["filter"] = filter_conditions
@@ -67,13 +75,15 @@ class FeishuClient:
     
     def create_table_record(self, table_id: str, fields: Dict) -> Dict:
         """创建多维表格记录"""
-        url = f"https://open.feishu.cn/open-apis/bitable/v1/tables/{table_id}/records"
+        app_token = self.config["feishu"].get("app_token", "")
+        url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records"
         data = {"fields": fields}
         return self._request("POST", url, json=data)
     
     def update_table_record(self, table_id: str, record_id: str, fields: Dict) -> Dict:
         """更新多维表格记录"""
-        url = f"https://open.feishu.cn/open-apis/bitable/v1/tables/{table_id}/records/{record_id}"
+        app_token = self.config["feishu"].get("app_token", "")
+        url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records/{record_id}"
         data = {"fields": fields}
         return self._request("PUT", url, json=data)
     

@@ -100,13 +100,12 @@ def step_create_draft(config, client, args):
         content = f"# {args.topic}\n\n（待AI生成内容）"
         tags = ""
     
-    # 写入飞书笔记库
+    # 写入飞书笔记库（状态即环节）
     fields = {
         "标题": title,
         "正文": content,
         "话题标签": tags,
-        "状态": "初稿",
-        "环节": "初稿"
+        "状态": "初稿"  # 环节：初稿/配图/待发布/已发布
     }
     
     result = client.create_table_record(table_id, fields)
@@ -140,12 +139,11 @@ def step_add_images(config, client, args):
     fields = {
         "封面图": images[0] if images else "",
         "内容图": ",".join(images) if images else "",
-        "状态": "配图",
-        "环节": "配图"
+        "状态": "配图"
     }
     
     client.update_table_record(table_id, args.record_id, fields)
-    print(f"✅ 已更新飞书笔记库，环节: 配图")
+    print(f"✅ 已更新飞书笔记库，状态: 配图")
 
 
 def step_ready_to_publish(config, client, args):
@@ -164,12 +162,11 @@ def step_ready_to_publish(config, client, args):
     # 更新飞书笔记库
     table_id = config["feishu"]["table_id_notes"]
     fields = {
-        "状态": "待发布",
-        "环节": "待发布"
+        "状态": "待发布"
     }
     
     client.update_table_record(table_id, args.record_id, fields)
-    print(f"✅ 已更新飞书笔记库，环节: 待发布")
+    print(f"✅ 已更新飞书笔记库，状态: 待发布")
 
 
 def step_published(config, client, args):
@@ -183,14 +180,13 @@ def step_published(config, client, args):
     import time
     fields = {
         "状态": "已发布",
-        "环节": "已发布",
         "发布时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     
     table_id = config["feishu"]["table_id_notes"]
     client.update_table_record(table_id, args.record_id, fields)
     
-    print(f"✅ 已更新飞书笔记库，环节: 已发布")
+    print(f"✅ 已更新飞书笔记库，状态: 已发布")
 
 
 if __name__ == "__main__":
