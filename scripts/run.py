@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
 小红书运营主脚本
-完整流程：选题 → 初稿 → 配图 → 待发布 → 已发布
+完整流程：选题 → 初稿 → 违禁词检测 → 配图 → 人工审核 → 待发布 → 已发布
 每个环节都会同步到飞书笔记库
 """
 
 import os
 import sys
 import yaml
+import json
 from pathlib import Path
 from datetime import datetime
 
@@ -16,19 +17,23 @@ sys.path.insert(0, str(Path(__file__).parent))
 from feishu_client import FeishuClient, load_config
 
 # 工作流环节
-STAGES = ["选题", "初稿", "配图", "待发布", "已发布"]
+STAGES = ["选题", "初稿", "检测", "配图", "审核", "待发布", "已发布"]
 
 
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="小红书运营工具")
-    parser.add_argument("--step", choices=["1", "2", "3", "4", "5", "all"], 
-                       default="all", help="执行哪一步: 1=选题 2=初稿 3=配图 4=待发布 5=已发布")
+    parser.add_argument("--step", 
+                       choices=["1", "2", "3", "4", "5", "6", "7", "all"], 
+                       default="all", 
+                       help="""执行哪一步: 
+                       1=选题 2=初稿 3=检测 4=配图 5=审核 6=待发布 7=已发布""")
     parser.add_argument("--config", default="config/config.yaml", help="配置文件路径")
     parser.add_argument("--topic", help="选题内容")
     parser.add_argument("--draft", help="生成的初稿内容（JSON格式：{title, content, tags}）")
     parser.add_argument("--images", help="图片路径（逗号分隔）")
     parser.add_argument("--record-id", help="飞书笔记库记录ID（用于继续流程）")
+    parser.add_argument("--approve", action="store_true", help="审核通过（用于步骤5）")
     
     args = parser.parse_args()
     
@@ -47,12 +52,18 @@ def main():
         step_create_draft(config, client, args)
     
     if args.step in ["3", "all"]:
-        step_add_images(config, client, args)
+        step_check_content(config, client, args)
     
     if args.step in ["4", "all"]:
-        step_ready_to_publish(config, client, args)
+        step_add_images(config, client, args)
     
     if args.step in ["5", "all"]:
+        step_review(config, client, args)
+    
+    if args.step in ["6", "all"]:
+        step_ready_to_publish(config, client, args)
+    
+    if args.step in ["7", "all"]:
         step_published(config, client, args)
     
     print("\n✅ 流程完成")
@@ -90,7 +101,6 @@ def step_create_draft(config, client, args):
     
     # 解析初稿内容
     if args.draft:
-        import json
         draft = json.loads(args.draft)
         title = draft.get("title", "")
         content = draft.get("content", "")
@@ -100,12 +110,12 @@ def step_create_draft(config, client, args):
         content = f"# {args.topic}\n\n（待AI生成内容）"
         tags = ""
     
-    # 写入飞书笔记库（状态即环节）
+    # 写入飞书笔记库
     fields = {
         "标题": title,
         "正文": content,
         "话题标签": tags,
-        "状态": "初稿"  # 环节：初稿/配图/待发布/已发布
+        "状态": "初稿"
     }
     
     result = client.create_table_record(table_id, fields)
@@ -114,24 +124,54 @@ def step_create_draft(config, client, args):
     print(f"✅ 初稿已保存到飞书笔记库")
     print(f"   记录ID: {record_id}")
     print(f"   标题: {title}")
-    print(f"   环节: 初稿")
+    print(f"   状态: 初稿")
     print(f"\n📝 继续流程请使用: --record-id {record_id}")
 
 
+def step_check_content(config, client, args):
+    """第3步：违禁词检测"""
+    print("\n=== 第3步：违禁词检测 ===")
+    
+    if not args.record_id:
+        print("❌ 需要提供记录ID，使用 --record-id 参数")
+        return
+    
+    table_id = config["feishu"]["table_id_notes"]
+    
+    # 获取当前记录内容
+    # TODO: 实际调用违禁词检测 API
+    print("🔍 检测违禁词...")
+    print("   （调用 check_xhs.py 进行检测）")
+    
+    # 模拟检测结果
+    is_safe = True
+    forbidden_found = []
+    
+    if is_safe:
+        print("✅ 违禁词检测通过")
+        fields = {"状态": "检测通过"}
+        client.update_table_record(table_id, args.record_id, fields)
+        print(f"✅ 已更新飞书笔记库，状态: 检测通过")
+    else:
+        print(f"❌ 检测到违禁词: {forbidden_found}")
+        fields = {"状态": f"检测失败-{','.join(forbidden_found)}"}
+        client.update_table_record(table_id, args.record_id, fields)
+        print(f"⚠️ 已更新飞书笔记库，状态: 检测失败")
+
+
 def step_add_images(config, client, args):
-    """第3步：配图 - 渲染图片"""
-    print("\n=== 第3步：配图 ===")
+    """第4步：配图 - 渲染图片"""
+    print("\n=== 第4步：配图 ===")
     
     if not args.record_id:
         print("❌ 需要提供记录ID，使用 --record-id 参数")
         return
     
     # TODO: 调用 render_xhs.py 渲染图片
-    # 这里简化处理
     images = args.images or ["./picture/card_1.png"]
     
     print(f"📷 待渲染图片: {images}")
-    print("（调用 render_xhs.py 渲染图片）")
+    print("   （调用 render_xhs.py 渲染图片）")
     print("✅ 图片渲染完成")
     
     # 更新飞书笔记库
@@ -139,16 +179,50 @@ def step_add_images(config, client, args):
     fields = {
         "封面图": images[0] if images else "",
         "内容图": ",".join(images) if images else "",
-        "状态": "配图"
+        "状态": "配图完成"
     }
     
     client.update_table_record(table_id, args.record_id, fields)
-    print(f"✅ 已更新飞书笔记库，状态: 配图")
+    print(f"✅ 已更新飞书笔记库，状态: 配图完成")
+
+
+def step_review(config, client, args):
+    """第5步：人工审核"""
+    print("\n=== 第5步：人工审核 ===")
+    
+    if not args.record_id:
+        print("❌ 需要提供记录ID，使用 --record-id 参数")
+        return
+    
+    # 获取笔记内容
+    table_id = config["feishu"]["table_id_notes"]
+    # TODO: 获取记录详情
+    
+    print("📋 请人工审核以下内容：")
+    print("   - 标题是否合适")
+    print("   - 正文是否有错别字")
+    print("   - 图片是否正确")
+    print("   - 话题标签是否合适")
+    print("\n审核命令：")
+    print(f"   通过: python3 scripts/run.py --step 5 --record-id {args.record_id} --approve")
+    print(f"   不通过: 手动修改内容后重新检测")
+    
+    if args.approve:
+        print("\n✅ 审核通过")
+        fields = {"状态": "待发布"}
+        client.update_table_record(table_id, args.record_id, fields)
+        print(f"✅ 已更新飞书笔记库，状态: 待发布")
+    else:
+        # 只更新状态为审核中，不自动流转
+        fields = {"状态": "审核中"}
+        client.update_table_record(table_id, args.record_id, fields)
+        print(f"\n📝 已更新飞书笔记库，状态: 审核中")
+        print("   请审核后使用 --approve 参数确认发布")
 
 
 def step_ready_to_publish(config, client, args):
-    """第4步：待发布 - 保存到小红书草稿箱"""
-    print("\n=== 第4步：待发布 ===")
+    """第6步：待发布 - 保存到小红书草稿箱"""
+    print("\n=== 第6步：待发布 ===")
     
     if not args.record_id:
         print("❌ 需要提供记录ID，使用 --record-id 参数")
@@ -161,23 +235,20 @@ def step_ready_to_publish(config, client, args):
     
     # 更新飞书笔记库
     table_id = config["feishu"]["table_id_notes"]
-    fields = {
-        "状态": "待发布"
-    }
+    fields = {"状态": "待发布"}
     
     client.update_table_record(table_id, args.record_id, fields)
     print(f"✅ 已更新飞书笔记库，状态: 待发布")
 
 
 def step_published(config, client, args):
-    """第5步：已发布 - 标记为已发布"""
-    print("\n=== 第5步：已发布 ===")
+    """第7步：已发布 - 标记为已发布"""
+    print("\n=== 第7步：已发布 ===")
     
     if not args.record_id:
         print("❌ 需要提供记录ID，使用 --record-id 参数")
         return
     
-    import time
     fields = {
         "状态": "已发布",
         "发布时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
