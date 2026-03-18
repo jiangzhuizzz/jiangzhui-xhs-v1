@@ -101,6 +101,138 @@ def split_content_by_separator(body: str) -> List[str]:
     return [part.strip() for part in parts if part.strip()]
 
 
+def estimate_content_height(content: str) -> int:
+    """
+    预估内容高度（基于字数和元素类型）
+    从 render_xhs_v2.py 移植，用于优化 auto-split 性能
+    """
+    lines = content.split('\n')
+    total_height = 0
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            total_height += 20  # 空行
+            continue
+            
+        # 标题
+        if line.startswith('# '):
+            total_height += 130  # h1: font-size 72 + margin
+        elif line.startswith('## '):
+            total_height += 110  # h2
+        elif line.startswith('### '):
+            total_height += 90   # h3
+        # 代码块
+        elif line.startswith('```'):
+            total_height += 80   # 代码块起始/结束
+        # 列表
+        elif line.startswith(('- ', '* ', '+ ')):
+            total_height += 85   # li: line-height ~1.6, font-size 42
+        # 引用
+        elif line.startswith('>'):
+            total_height += 100  # blockquote padding
+        # 图片
+        elif line.startswith('!['):
+            total_height += 300  # 图片高度估计
+        # 普通段落
+        else:
+            # 估算字数
+            char_count = len(line)
+            # 一行约25-30个中文字，行高1.7，字体42px
+            lines_needed = max(1, char_count / 28)
+            total_height += int(lines_needed * 42 * 1.7) + 35  # + margin-bottom
+    
+    return total_height
+
+
+def smart_split_content(content: str, max_height: int = 1100) -> List[str]:
+    """
+    智能拆分内容到多张卡片（基于预估高度）
+    从 render_xhs_v2.py 移植，优化 auto-split 性能
+    """
+    # 首先尝试识别内容块（以标题或空行分隔）
+    blocks = []
+    current_block = []
+    
+    lines = content.split('\n')
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        
+        # 新标题开始新块（除非是第一个）
+        if line.strip().startswith('#') and current_block:
+            blocks.append('\n'.join(current_block))
+            current_block = [line]
+        # 分隔线
+        elif line.strip() == '---':
+            if current_block:
+                blocks.append('\n'.join(current_block))
+                current_block = []
+        else:
+            current_block.append(line)
+        
+        i += 1
+    
+    if current_block:
+        blocks.append('\n'.join(current_block))
+    
+    # 如果没有明显的块边界，按段落拆分
+    if len(blocks) <= 1:
+        blocks = [b for b in content.split('\n\n') if b.strip()]
+    
+    # 合并块到卡片，确保每张卡片高度不超过限制
+    cards = []
+    current_card = []
+    current_height = 0
+    
+    for block in blocks:
+        block_height = estimate_content_height(block)
+        
+        # 如果单个块就超过限制，需要进一步拆分
+        if block_height > max_height:
+            # 如果当前卡片有内容，先保存
+            if current_card:
+                cards.append('\n\n'.join(current_card))
+                current_card = []
+                current_height = 0
+            
+            # 将大块按行拆分
+            lines = block.split('\n')
+            sub_block = []
+            sub_height = 0
+            
+            for line in lines:
+                line_height = estimate_content_height(line)
+                
+                if sub_height + line_height > max_height and sub_block:
+                    cards.append('\n'.join(sub_block))
+                    sub_block = [line]
+                    sub_height = line_height
+                else:
+                    sub_block.append(line)
+                    sub_height += line_height
+            
+            if sub_block:
+                cards.append('\n'.join(sub_block))
+        
+        # 如果当前卡片加上这个块会超，先保存当前卡片
+        elif current_height + block_height > max_height and current_card:
+            cards.append('\n\n'.join(current_card))
+            current_card = [block]
+            current_height = block_height
+        
+        # 否则加入当前卡片
+        else:
+            current_card.append(block)
+            current_height += block_height
+    
+    # 保存最后一个卡片
+    if current_card:
+        cards.append('\n\n'.join(current_card))
+    
+    return cards if cards else [content]
+
+
 def convert_markdown_to_html(md_content: str) -> str:
     """将 Markdown 转换为 HTML"""
     # 处理 tags（以 # 开头的标签）
@@ -528,13 +660,24 @@ async def render_html_to_image(html_content: str, output_path: str,
 
 async def auto_split_content(body: str, theme: str, width: int, height: int, 
                              dpr: int = 2) -> List[str]:
-    """自动切分内容：根据渲染后的高度自动分页"""
+    """
+    自动切分内容：优化版，使用智能预估 + 浏览器验证
+    先用 estimate_content_height() 快速预估，减少浏览器渲染次数
+    """
     
-    # 将内容按段落分割
-    paragraphs = re.split(r'\n\n+', body)
+    # 内容区域的可用高度（去除 padding 等）
+    available_height = height - 220  # 50*2 padding + 60*2 inner padding
     
-    cards = []
-    current_content = []
+    print("  🔍 使用智能预估进行初步分页...")
+    # 第一步：使用智能预估快速分页
+    estimated_cards = smart_split_content(body, available_height)
+    
+    print(f"  📄 预估分为 {len(estimated_cards)} 张卡片")
+    
+    # 第二步：对预估结果进行浏览器验证（仅验证边界情况）
+    print("  ⏳ 验证分页结果...")
+    
+    verified_cards = []
     
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -544,12 +687,9 @@ async def auto_split_content(body: str, theme: str, width: int, height: int,
         )
         
         try:
-            for para in paragraphs:
-                # 尝试将当前段落加入
-                test_content = current_content + [para]
-                test_md = '\n\n'.join(test_content)
-                
-                html = generate_card_html(test_md, theme, 1, 1, width, height, 'auto-split')
+            for i, card_content in enumerate(estimated_cards, 1):
+                # 生成 HTML 并测量实际高度
+                html = generate_card_html(card_content, theme, 1, 1, width, height, 'auto-split')
                 
                 with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
                     f.write(html)
@@ -566,24 +706,54 @@ async def auto_split_content(body: str, theme: str, width: int, height: int,
                 
                 os.unlink(temp_path)
                 
-                # 内容区域的可用高度（去除 padding 等）
-                available_height = height - 220  # 50*2 padding + 60*2 inner padding
-
-                if content_height > available_height and current_content:
-                    # 当前卡片已满，保存并开始新卡片
-                    cards.append('\n\n'.join(current_content))
-                    current_content = [para]
+                # 如果实际高度超出，需要进一步拆分
+                if content_height > available_height * 1.1:  # 允许 10% 误差
+                    print(f"    ⚠️  卡片 {i} 超出限制，进一步拆分...")
+                    # 按段落拆分
+                    paragraphs = [p for p in card_content.split('\n\n') if p.strip()]
+                    
+                    sub_cards = []
+                    current_sub = []
+                    
+                    for para in paragraphs:
+                        test_content = current_sub + [para]
+                        test_md = '\n\n'.join(test_content)
+                        
+                        test_html = generate_card_html(test_md, theme, 1, 1, width, height, 'auto-split')
+                        
+                        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
+                            f.write(test_html)
+                            temp_path = f.name
+                        
+                        await page.goto(f'file://{temp_path}')
+                        await page.wait_for_load_state('networkidle')
+                        await page.wait_for_timeout(200)
+                        
+                        test_height = await page.evaluate('''() => {
+                            const content = document.querySelector('.card-content');
+                            return content ? content.scrollHeight : 0;
+                        }''')
+                        
+                        os.unlink(temp_path)
+                        
+                        if test_height > available_height and current_sub:
+                            sub_cards.append('\n\n'.join(current_sub))
+                            current_sub = [para]
+                        else:
+                            current_sub = test_content
+                    
+                    if current_sub:
+                        sub_cards.append('\n\n'.join(current_sub))
+                    
+                    verified_cards.extend(sub_cards)
                 else:
-                    current_content = test_content
-            
-            # 保存最后一张卡片
-            if current_content:
-                cards.append('\n\n'.join(current_content))
+                    verified_cards.append(card_content)
                 
         finally:
             await browser.close()
     
-    return cards
+    print(f"  ✅ 最终分为 {len(verified_cards)} 张卡片")
+    return verified_cards
 
 
 async def render_markdown_to_cards(md_file: str, output_dir: str, 

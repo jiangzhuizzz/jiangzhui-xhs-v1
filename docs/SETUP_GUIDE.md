@@ -134,10 +134,22 @@ cp config/config.yaml.example config/config.yaml
 4. 添加权限：
    - `bitable:app` - 多维表格读写
    - `drive:drive` - 云文档读写
-5. 创建多维表格：
+
+5. **使用模板库（推荐）**：
+   - 📋 模板库链接：https://jcngro65vrcw.feishu.cn/base/NBnHb1YvLabIGXsKnzHcki6jnwf?from=from_copylink
+   - 点击右上角「使用此模板」复制到你的飞书空间
+   - 模板包含：
+     - ✅ 选题库（字段：标题、内容类型、关键词、状态、优先级）
+     - ✅ 笔记库（字段：标题、正文、话题、封面图、状态、发布时间）
+     - ✅ 预设工作流状态
+   
+   **或手动创建多维表格**：
    - 选题库（包含字段：标题、内容类型、关键词、状态）
    - 笔记库（包含字段：标题、正文、话题、封面图、状态）
+
 6. 获取 `App Token` 和 `Table ID`
+   - 打开多维表格，URL 中的 `base/` 后面是 `App Token`
+   - 点击表格名称，URL 中的 `table/` 后面是 `Table ID`
 
 **填写配置：**
 
