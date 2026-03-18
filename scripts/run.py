@@ -106,6 +106,7 @@ def step_generate_and_check(config, client, args):
     title = args.title or f"关于{args.topic}的笔记"
     content = args.content or f"# {args.topic}\n\n（待生成内容）"
     tags = args.tags or ""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
     
     print(f"📝 标题: {title}")
     print(f"📝 正文: {content[:50]}...")
@@ -133,11 +134,15 @@ def step_generate_and_check(config, client, args):
     # 保存初稿到飞书
     table_id = config["feishu"]["table_id_notes"]
     
+    # 版本记录
+    version_record = f"[{now}] 初稿版本1\n"
+    
     fields = {
         "标题": title,
         "正文": result_content,
         "话题标签": tags,
-        "状态": "初稿" if is_safe else "检测失败"
+        "状态": "初稿" if is_safe else "检测失败",
+        "版本记录": version_record
     }
     
     result = client.create_table_record(table_id, fields)
@@ -174,11 +179,14 @@ def step_add_images(config, client, args):
     
     # 更新飞书（图片字段暂不传，默认用本地路径）
     table_id = config["feishu"]["table_id_notes"]
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    
     fields = {
         # 飞书图片字段需要特殊格式，暂时跳过
         # "封面图": images[0] if images else "",
         # "内容图": ",".join(images) if images else "",
-        "状态": "配图完成"
+        "状态": "配图完成",
+        "版本记录": f"[{now}] 配图完成\n"
     }
     
     client.update_table_record(table_id, args.record_id, fields)
@@ -235,9 +243,12 @@ def step_publish(config, client, args):
     # 发布时间需要 Unix 时间戳
     import time
     timestamp = int(time.time())
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    
     fields = {
         "状态": "已发布",
-        "发布时间": timestamp
+        "发布时间": timestamp,
+        "版本记录": f"[{now}] 已发布\n"
     }
     
     client.update_table_record(table_id, args.record_id, fields)
@@ -246,21 +257,58 @@ def step_publish(config, client, args):
 
 def step_show_history(config, client, args):
     """第6步：查看历史版本"""
-    print("\n=== 查看笔记历史 ===")
+    print("\n=== 查看笔记历史 ===\n")
     
     if not args.record_id:
         # 列出所有笔记
         table_id = config["feishu"]["table_id_notes"]
         records = client.get_table_records(table_id)
         
-        print(f"共 {len(records)} 条笔记：")
-        for r in records[:10]:
+        print(f"共 {len(records)} 条笔记：\n")
+        for r in records:
             fields = r.get("fields", {})
-            print(f"  - {fields.get('标题', '未命名')} | {fields.get('状态', '')} | {fields.get('发布时间', '')}")
+            record_id = r.get("record_id", "")
+            title = fields.get("标题", "未命名")
+            status = fields.get("状态", "")
+            version = fields.get("版本记录", "")[:50] if fields.get("版本记录") else ""
+            print(f"📝 {title}")
+            print(f"   ID: {record_id}")
+            print(f"   状态: {status}")
+            if version:
+                print(f"   版本: {version}...")
+            print()
+        
+        print("查看详情: python3 scripts/run.py --step 6 --record-id <ID>")
     else:
-        # TODO: 查看单条笔记的版本历史
-        print(f"记录ID: {args.record_id}")
-        print("   （版本历史功能开发中）")
+        # 查看单条笔记的完整信息
+        table_id = config["feishu"]["table_id_notes"]
+        
+        # 获取记录列表
+        records = client.get_table_records(table_id)
+        record = None
+        for r in records:
+            if r.get("record_id") == args.record_id:
+                record = r
+                break
+        
+        if not record:
+            print("❌ 未找到记录")
+            return
+        
+        fields = record.get("fields", {})
+        
+        print(f"📝 标题: {fields.get('标题', 'N/A')}")
+        print(f"📋 状态: {fields.get('状态', 'N/A')}")
+        print(f"🏷️  话题: {fields.get('话题标签', 'N/A')}")
+        print(f"📅 发布时间: {fields.get('发布时间', 'N/A')}")
+        
+        print(f"\n📄 正文:")
+        print("-" * 40)
+        print(fields.get("正文", "N/A"))
+        print("-" * 40)
+        
+        print(f"\n📒 版本记录:")
+        print(fields.get("版本记录", "无"))
 
 
 if __name__ == "__main__":
