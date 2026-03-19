@@ -67,74 +67,7 @@ AVAILABLE_THEMES = [
 ]
 
 # 分页模式
-PAGING_MODES = ['separator', 'auto-fit', 'auto-split', 'dynamic', 'smart']
-
-
-def count_chinese_chars(text: str) -> int:
-    """统计中文字符数量（忽略空格和标点）"""
-    # 移除非内容字符
-    text = re.sub(r'[#*\-\[\]`>\s]', '', text)
-    return len(text)
-
-
-def smart_split_content(body: str, available_height: int) -> List[str]:
-    """
-    智能分页：根据内容自动决定分几张卡片
-    目标是让每张卡片都尽量填满，控制在1-3张
-    """
-    # 统计总字数
-    total_chars = count_chinese_chars(body)
-
-    # 智能决定卡片数：让内容尽量填满卡片
-    # 规则：
-    # - <600字：1张（用大字体填满）
-    # - 600-1000字：2张
-    # - 1000-1500字：3张
-    # - >1500字：按需增加
-    if total_chars < 600:
-        estimated_cards = 1  # 短内容用1张大卡片
-    elif total_chars < 1000:
-        estimated_cards = 2
-    elif total_chars < 1500:
-        estimated_cards = 3
-    else:
-        chars_per_card = 900
-        estimated_cards = min(5, max(3, int((total_chars + chars_per_card - 1) / chars_per_card)))
-
-    # 限制在1-3张
-    estimated_cards = min(3, max(1, estimated_cards))
-
-    # 按段落分割
-    paragraphs = re.split(r'\n\n+', body)
-    paragraphs = [p.strip() for p in paragraphs if p.strip()]
-
-    if not paragraphs:
-        return [body.strip()]
-
-    # 智能分配内容到各张卡片
-    cards = []
-    current_card = []
-    current_chars = 0
-    target_chars_per_card = total_chars // estimated_cards
-
-    for para in paragraphs:
-        para_chars = count_chinese_chars(para)
-
-        # 如果当前段落加上会超过目标，检查是否需要换卡
-        if current_chars + para_chars > target_chars_per_card * 1.2 and len(cards) < estimated_cards - 1:
-            if current_card:
-                cards.append('\n\n'.join(current_card))
-                current_card = []
-                current_chars = 0
-
-        current_card.append(para)
-        current_chars += para_chars
-
-    # 添加最后一张
-    if current_card:
-        cards.append('\n\n'.join(current_card))
-
-    return cards if cards else [body.strip()]
+PAGING_MODES = ['separator', 'auto-fit', 'auto-split', 'dynamic']
 
 
 def parse_markdown_file(file_path: str) -> dict:
@@ -166,52 +99,6 @@ def split_content_by_separator(body: str) -> List[str]:
     """按照 --- 分隔符拆分正文为多张卡片内容"""
     parts = re.split(r'\n---+\n', body)
     return [part.strip() for part in parts if part.strip()]
-
-
-def estimate_content_height(content: str) -> int:
-    """
-    预估内容高度（基于字数和元素类型）
-    从 render_xhs_v2.py 移植，用于优化 auto-split 性能
-    """
-    lines = content.split('\n')
-    total_height = 0
-    
-    for line in lines:
-        line = line.strip()
-        if not line:
-            total_height += 20  # 空行
-            continue
-            
-        # 标题
-        if line.startswith('# '):
-            total_height += 130  # h1: font-size 72 + margin
-        elif line.startswith('## '):
-            total_height += 110  # h2
-        elif line.startswith('### '):
-            total_height += 90   # h3
-        # 代码块
-        elif line.startswith('```'):
-            total_height += 80   # 代码块起始/结束
-        # 列表
-        elif line.startswith(('- ', '* ', '+ ')):
-            total_height += 85   # li: line-height ~1.6, font-size 42
-        # 引用
-        elif line.startswith('>'):
-            total_height += 100  # blockquote padding
-        # 图片
-        elif line.startswith('!['):
-            total_height += 300  # 图片高度估计
-        # 普通段落
-        else:
-            # 估算字数
-            char_count = len(line)
-            # 一行约25-30个中文字，行高1.7，字体42px
-            lines_needed = max(1, char_count / 28)
-            total_height += int(lines_needed * 42 * 1.7) + 35  # + margin-bottom
-    
-    return total_height
-
-
 
 
 def convert_markdown_to_html(md_content: str) -> str:
@@ -409,24 +296,8 @@ def generate_card_html(content: str, theme: str, page_number: int = 1,
     }
     bg = theme_backgrounds.get(theme, theme_backgrounds['default'])
     
-    # 动态计算 padding 和字体大小
-    # 根据卡片数量调整：卡片越少，padding越小，字体越大
-    if total_pages == 1:
-        # 单张卡片：最大利用空间
-        outer_padding = 10
-        inner_padding = 18
-        font_scale = 1.0
-    elif total_pages == 2:
-        outer_padding = 10
-        inner_padding = 16
-        font_scale = 0.95
-    else:
-        outer_padding = 10
-        inner_padding = 14
-        font_scale = 0.9
-
     # 根据模式设置不同的容器样式
-    if mode == 'auto-fit' or mode == 'smart':
+    if mode == 'auto-fit':
         container_style = f'''
             width: {width}px;
             height: {height}px;
@@ -446,7 +317,10 @@ def generate_card_html(content: str, theme: str, page_number: int = 1,
             display: flex;
             flex-direction: column;
         '''
-        content_style = 'flex: 1; overflow: hidden;'
+        content_style = '''
+            flex: 1;
+            overflow: hidden;
+        '''
     elif mode == 'dynamic':
         container_style = f'''
             width: {width}px;
@@ -652,72 +526,15 @@ async def render_html_to_image(html_content: str, output_path: str,
             await browser.close()
 
 
-async def auto_split_content(body: str, theme: str, width: int, height: int,
+async def auto_split_content(body: str, theme: str, width: int, height: int, 
                              dpr: int = 2) -> List[str]:
-    """
-    自动切分内容：优化版，使用智能预估 + 浏览器验证
-    先用 estimate_content_height() 快速预估，减少浏览器渲染次数
-    """
-
-    # 内容区域的可用高度（去除 padding 等）
-    available_height = height - 220  # 50*2 padding + 60*2 inner padding
-
-    print("  🔍 使用智能预估进行初步分页...")
-    # 第一步：使用 estimate_content_height 快速预估分页
-    # 识别内容块（以标题或分隔线）
-    blocks = []
-    current_block = []
-
-    for line in body.split('\n'):
-        if line.strip().startswith('#') and current_block:
-            blocks.append('\n'.join(current_block))
-            current_block = [line]
-        elif line.strip() == '---':
-            if current_block:
-                blocks.append('\n'.join(current_block))
-                current_block = []
-        else:
-            current_block.append(line)
-
-    if current_block:
-        blocks.append('\n'.join(current_block))
-
-    if len(blocks) <= 1:
-        blocks = [b for b in body.split('\n\n') if b.strip()]
-
-    # 合并块到卡片
-    estimated_cards = []
-    current_card = []
-    current_height = 0
-    max_height = available_height
-
-    for block in blocks:
-        block_height = estimate_content_height(block)
-
-        if block_height > max_height:
-            if current_card:
-                estimated_cards.append('\n\n'.join(current_card))
-                current_card = []
-                current_height = 0
-            # 拆分大块
-            estimated_cards.append(block)
-        elif current_height + block_height > max_height and current_card:
-            estimated_cards.append('\n\n'.join(current_card))
-            current_card = [block]
-            current_height = block_height
-        else:
-            current_card.append(block)
-            current_height += block_height
-
-    if current_card:
-        estimated_cards.append('\n\n'.join(current_card))
+    """自动切分内容：根据渲染后的高度自动分页"""
     
-    print(f"  📄 预估分为 {len(estimated_cards)} 张卡片")
+    # 将内容按段落分割
+    paragraphs = re.split(r'\n\n+', body)
     
-    # 第二步：对预估结果进行浏览器验证（仅验证边界情况）
-    print("  ⏳ 验证分页结果...")
-    
-    verified_cards = []
+    cards = []
+    current_content = []
     
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -727,9 +544,12 @@ async def auto_split_content(body: str, theme: str, width: int, height: int,
         )
         
         try:
-            for i, card_content in enumerate(estimated_cards, 1):
-                # 生成 HTML 并测量实际高度
-                html = generate_card_html(card_content, theme, 1, 1, width, height, 'auto-split')
+            for para in paragraphs:
+                # 尝试将当前段落加入
+                test_content = current_content + [para]
+                test_md = '\n\n'.join(test_content)
+                
+                html = generate_card_html(test_md, theme, 1, 1, width, height, 'auto-split')
                 
                 with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
                     f.write(html)
@@ -746,54 +566,24 @@ async def auto_split_content(body: str, theme: str, width: int, height: int,
                 
                 os.unlink(temp_path)
                 
-                # 如果实际高度超出，需要进一步拆分
-                if content_height > available_height * 1.1:  # 允许 10% 误差
-                    print(f"    ⚠️  卡片 {i} 超出限制，进一步拆分...")
-                    # 按段落拆分
-                    paragraphs = [p for p in card_content.split('\n\n') if p.strip()]
-                    
-                    sub_cards = []
-                    current_sub = []
-                    
-                    for para in paragraphs:
-                        test_content = current_sub + [para]
-                        test_md = '\n\n'.join(test_content)
-                        
-                        test_html = generate_card_html(test_md, theme, 1, 1, width, height, 'auto-split')
-                        
-                        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
-                            f.write(test_html)
-                            temp_path = f.name
-                        
-                        await page.goto(f'file://{temp_path}')
-                        await page.wait_for_load_state('networkidle')
-                        await page.wait_for_timeout(200)
-                        
-                        test_height = await page.evaluate('''() => {
-                            const content = document.querySelector('.card-content');
-                            return content ? content.scrollHeight : 0;
-                        }''')
-                        
-                        os.unlink(temp_path)
-                        
-                        if test_height > available_height and current_sub:
-                            sub_cards.append('\n\n'.join(current_sub))
-                            current_sub = [para]
-                        else:
-                            current_sub = test_content
-                    
-                    if current_sub:
-                        sub_cards.append('\n\n'.join(current_sub))
-                    
-                    verified_cards.extend(sub_cards)
+                # 内容区域的可用高度（去除 padding 等）
+                available_height = height - 220  # 50*2 padding + 60*2 inner padding
+
+                if content_height > available_height and current_content:
+                    # 当前卡片已满，保存并开始新卡片
+                    cards.append('\n\n'.join(current_content))
+                    current_content = [para]
                 else:
-                    verified_cards.append(card_content)
+                    current_content = test_content
+            
+            # 保存最后一张卡片
+            if current_content:
+                cards.append('\n\n'.join(current_content))
                 
         finally:
             await browser.close()
     
-    print(f"  ✅ 最终分为 {len(verified_cards)} 张卡片")
-    return verified_cards
+    return cards
 
 
 async def render_markdown_to_cards(md_file: str, output_dir: str, 
@@ -818,13 +608,7 @@ async def render_markdown_to_cards(md_file: str, output_dir: str,
     body = data['body']
     
     # 根据模式处理内容分割
-    if mode == 'smart':
-        # 智能分页：根据字数自动决定分几张
-        total_chars = count_chinese_chars(body)
-        print(f"  📊 检测到约 {total_chars} 中文字符")
-        available_height = height - 220
-        card_contents = smart_split_content(body, available_height)
-    elif mode == 'auto-split':
+    if mode == 'auto-split':
         print("  ⏳ 自动分析内容并切分...")
         card_contents = await auto_split_content(body, theme, width, height, dpr)
     else:
@@ -867,11 +651,10 @@ def main():
   sketch            - 手绘素描风格
 
 分页模式:
-  separator   - 按 --- 分隔符手动分页
+  separator   - 按 --- 分隔符手动分页（默认）
   auto-fit    - 自动缩放文字以填满固定尺寸
   auto-split  - 根据内容高度自动切分
   dynamic     - 根据内容动态调整图片高度
-  smart       - 智能分页：根据字数自动决定分几张（<500字=1张，500-1000=2张...）
 '''
     )
     parser.add_argument(
@@ -880,13 +663,8 @@ def main():
     )
     parser.add_argument(
         '--output-dir', '-o',
-        default=None,
-        help='输出目录（默认为 picture/YYYY-MM-DD-标题/）'
-    )
-    parser.add_argument(
-        '--randomize', '-r',
-        action='store_true',
-        help='图片哈希随机化：添加微小扰动使每次图片哈希不同'
+        default=os.getcwd(),
+        help='输出目录（默认为当前工作目录）'
     )
     parser.add_argument(
         '--theme', '-t',
@@ -897,8 +675,8 @@ def main():
     parser.add_argument(
         '--mode', '-m',
         choices=PAGING_MODES,
-        default='smart',
-        help='分页模式（默认: smart）'
+        default='separator',
+        help='分页模式（默认: separator）'
     )
     parser.add_argument(
         '--width', '-w',
@@ -931,61 +709,8 @@ def main():
         print(f"❌ 错误: 文件不存在 - {args.markdown_file}")
         sys.exit(1)
     
-    # 自动生成输出目录（默认为 picture/YYYY-MM-DD-标题/）
-    if args.output_dir is None:
-        from datetime import datetime
-        import re
-        
-        # 从markdown文件提取标题
-        md_path = Path(args.markdown_file)
-        with open(md_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        # 尝试从frontmatter提取标题
-        title = ""
-        if content.startswith('---'):
-            parts = content.split('---', 2)
-            if len(parts) >= 3:
-                fm = parts[1]
-                for line in fm.split('\n'):
-                    if line.startswith('title:'):
-                        title = line.split('title:', 1)[1].strip().strip('"').strip("'")
-                        break
-        
-        # 如果没有标题，用文件名
-        if not title:
-            title = md_path.stem
-        
-        # 清理标题中的非法字符
-        title = re.sub(r'[<>:"/\\|?*]', '', title)[:30]
-        date_str = datetime.now().strftime('%Y-%m-%d')
-        args.output_dir = os.path.join('picture', f'{date_str}-{title}')
-    
-    # 图片哈希随机化：在内容中添加不可见扰动
-    if args.randomize:
-        import random
-        import string
-        
-        with open(args.markdown_file, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        # 在每个段落末尾添加随机空格（不可见但改变哈希）
-        noise = ''.join(random.choices(' \t', k=random.randint(1, 3)))
-        content = content.replace('\n\n', f'\n\n{noise}\n')
-        
-        # 保存扰动后的副本（不修改原文件）
-        import tempfile
-        temp_fd, temp_path = tempfile.mkstemp(suffix='.md', dir=os.path.dirname(args.markdown_file))
-        with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
-            f.write(content)
-        
-        render_file = temp_path
-        print(f"🎲 已应用图片哈希随机化")
-    else:
-        render_file = args.markdown_file
-    
     asyncio.run(render_markdown_to_cards(
-        render_file,
+        args.markdown_file,
         args.output_dir,
         theme=args.theme,
         mode=args.mode,

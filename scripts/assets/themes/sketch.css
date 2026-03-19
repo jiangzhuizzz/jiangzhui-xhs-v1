@@ -16,7 +16,7 @@
 .card-inner {
   background-color: #fffef9;
   /* 纸张网格背景 */
-  background-image:
+  background-image: 
     linear-gradient(#e0e0e0 1px, transparent 1px),
     linear-gradient(90deg, #e0e0e0 1px, transparent 1px);
   background-size: 30px 30px;

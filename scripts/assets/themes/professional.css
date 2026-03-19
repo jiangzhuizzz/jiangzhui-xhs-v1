@@ -1,148 +1,176 @@
-/* Professional 主题 - 商务专业风格 */
+/* ============================================
+   Professional - 专业商务风格
+   简洁、稳重、可读性强
+   适配小红书卡片渲染
+   ============================================ */
 
-:root {
-    --card-bg: #ffffff;
-    --card-border: #bfdbfe;
-    --card-shadow: 0 10px 40px rgba(37, 99, 235, 0.12);
-    --card-radius: 12px;
-
-    --text-primary: #1e3a8a;
-    --text-secondary: #4b5563;
-    --text-muted: #9ca3af;
-
-    --accent-color: #2563eb;
-    --accent-secondary: #3b82f6;
-    --accent-bg: #eff6ff;
-
-    --h1-size: 48px;
-    --h2-size: 36px;
-    --h3-size: 28px;
-    --p-size: 22px;
-    --list-size: 20px;
-
-    --tag-bg: #dbeafe;
-    --tag-color: #1d4ed8;
-    --tag-radius: 6px;
-}
+/* 配色定义
+   背景色: #FFFFFF (纯白)
+   前景色: #1A202C (深灰黑)
+   主蓝色: #2563EB (专业蓝)
+   浅蓝: #DBEAFE (淡蓝背景)
+   灰色: #64748B (中性灰)
+   边框: #E2E8F0 (浅灰边框)
+*/
 
 .card-inner {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: var(--card-radius);
-    box-shadow: var(--card-shadow);
-    /* 微妙网格纹理 */
-    background-image:
-        linear-gradient(rgba(37, 99, 235, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px);
-    background-size: 20px 20px;
+  background-color: #ffffff;
 }
 
 .card-content {
-    color: var(--text-primary);
-    font-size: var(--p-size);
-    line-height: 1.8;
+  color: #1a202c;
+  font-size: 42px;
+  line-height: 1.75;
 }
 
+/* 标题样式 */
 .card-content h1 {
-    font-size: var(--h1-size);
-    font-weight: 700;
-    margin: 0 0 28px 0;
-    color: var(--text-primary);
-    line-height: 1.25;
-    letter-spacing: -0.5px;
-    border-left: 5px solid var(--accent-color);
-    padding-left: 20px;
+  font-size: 72px;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 40px;
+  line-height: 1.3;
+  padding-bottom: 20px;
+  border-bottom: 3px solid #2563eb;
 }
 
 .card-content h2 {
-    font-size: var(--h2-size);
-    font-weight: 600;
-    margin: 32px 0 16px 0;
-    color: var(--text-primary);
-    padding-bottom: 10px;
-    border-bottom: 1px solid #e5e7eb;
+  font-size: 56px;
+  font-weight: 600;
+  color: #1e40af;
+  margin: 50px 0 25px 0;
+  line-height: 1.4;
 }
 
 .card-content h3 {
-    font-size: var(--h3-size);
-    font-weight: 600;
-    margin: 24px 0 12px 0;
-    color: var(--accent-color);
+  font-size: 48px;
+  font-weight: 600;
+  color: #374151;
+  margin: 40px 0 20px 0;
 }
 
+/* 段落 */
 .card-content p {
-    margin: 0 0 20px 0;
-    color: var(--text-secondary);
+  margin-bottom: 35px;
+  color: #374151;
 }
 
-.card-content ul, .card-content ol {
-    margin: 0 0 20px 0;
-    padding-left: 28px;
+/* 粗体 */
+.card-content strong,
+.card-content b {
+  font-weight: 700;
+  color: #1a202c;
+}
+
+/* 斜体 */
+.card-content em,
+.card-content i {
+  font-style: italic;
+  color: #2563eb;
+}
+
+/* 链接 */
+.card-content a {
+  color: #2563eb;
+  text-decoration: none;
+  border-bottom: 2px solid #93c5fd;
+}
+
+/* 列表 */
+.card-content ul,
+.card-content ol {
+  margin: 30px 0;
+  padding-left: 60px;
 }
 
 .card-content li {
-    margin: 8px 0;
-    font-size: var(--list-size);
-    color: var(--text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.6;
+  color: #374151;
 }
 
 .card-content li::marker {
-    color: var(--accent-color);
+  color: #2563eb;
 }
 
-.card-content strong {
-    color: var(--text-primary);
-    font-weight: 600;
+/* 引用块 */
+.card-content blockquote {
+  margin: 35px 0;
+  padding: 30px 40px;
+  background-color: #dbeafe;
+  color: #1e40af;
+  border-left: 5px solid #2563eb;
+  border-radius: 0 8px 8px 0;
 }
 
-.card-content em {
-    color: var(--accent-color);
-    font-style: normal;
-    background: var(--accent-bg);
-    padding: 2px 8px;
-    border-radius: 4px;
+.card-content blockquote p {
+  margin: 0;
 }
 
+/* 行内代码 */
 .card-content code {
-    font-family: 'SF Mono', monospace;
-    font-size: 18px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    padding: 2px 8px;
-    color: #0f172a;
+  font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 38px;
+  background-color: #f1f5f9;
+  color: #0f172a;
+  padding: 6px 16px;
+  border-radius: 6px;
 }
 
+/* 代码块 */
 .card-content pre {
-    background: #1e293b;
-    border-radius: 8px;
-    padding: 20px;
-    overflow-x: auto;
-    margin: 20px 0;
+  margin: 35px 0;
+  padding: 40px;
+  background-color: #0f172a;
+  color: #e2e8f0;
+  border-radius: 12px;
+  overflow-x: visible;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-all;
+  white-space: pre-wrap;
 }
 
 .card-content pre code {
-    background: none;
-    border: none;
-    padding: 0;
-    color: #e2e8f0;
-    font-size: 16px;
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: 36px;
+  line-height: 1.5;
 }
 
+/* 分割线 */
+.card-content hr {
+  margin: 50px 0;
+  border: none;
+  height: 2px;
+  background-color: #e2e8f0;
+}
+
+/* 图片 */
+.card-content img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 35px auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Tags 标签样式 */
 .tags-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 32px;
-    padding-top: 20px;
-    border-top: 1px solid #e5e7eb;
+  margin-top: 50px;
+  padding-top: 30px;
+  border-top: 2px solid #e2e8f0;
 }
 
 .tag {
-    background: var(--tag-bg);
-    color: var(--tag-color);
-    padding: 6px 14px;
-    border-radius: var(--tag-radius);
-    font-size: 16px;
-    font-weight: 500;
+  display: inline-block;
+  background-color: #2563eb;
+  color: white;
+  padding: 12px 28px;
+  border-radius: 6px;
+  font-size: 34px;
+  margin: 10px 15px 10px 0;
+  font-weight: 500;
 }
