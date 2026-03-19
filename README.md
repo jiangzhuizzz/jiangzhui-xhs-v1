@@ -1,45 +1,22 @@
 # 小红书自动化内容生成与发布系统
 
-一键生成小红书文案、渲染图片、上传飞书多维表格的自动化工具。
+一键生成小红书文案、渲染图片，上传飞书多维表格的自动化工具。
 
 **核心功能**：飞书多维表格 + OpenClaw = 自动生成小红书笔记
 
 ---
 
-## 📖 使用指南
+## 核心功能
 
-### 🎯 新手快速上手（推荐）
-
-**适合人群**：零基础用户、只想用不想管代码
-
-👉 **[新手快速上手指南](docs/QUICK_START.md)**
-
-- ✅ 无需 GitHub 账号
-- ✅ 无需代码管理
-- ✅ 只需飞书 + OpenClaw
-- ✅ 详细图文教程
-
-### 🔧 开发者完整指南
-
-**适合人群**：需要二次开发、跨设备部署
-
-👉 **[完整部署指南](docs/SETUP_GUIDE.md)**
-
-- Git 克隆和版本管理
-- 虚拟环境配置
-- 高级功能定制
+- 智能文案生成：基于主题和关键词自动生成小红书风格文案
+- 图片自动渲染：支持多种精美主题，自动生成封面和内容卡片
+- 违禁词检测：自动检测并标记小红书平台违禁词
+- 飞书集成：自动上传文案和图片到飞书多维表格
+- 全流程自动化：从内容生成到素材准备一键完成
 
 ---
 
-## ✨ 功能特性
-
-- 📝 **智能文案生成**：基于主题和关键词自动生成小红书风格文案
-- 🎨 **图片自动渲染**：支持 8 种精美主题，自动生成封面和内容卡片
-- 🚫 **违禁词检测**：自动检测并标记小红书平台违禁词
-- 📤 **飞书集成**：自动上传文案和图片到飞书多维表格
-- 🔄 **全流程自动化**：从内容生成到素材准备一键完成
-
-## 🚀 快速开始
+## 快速开始
 
 ### 安装依赖
 
@@ -58,29 +35,20 @@ cp config/config.yaml.example config/config.yaml
 编辑 `config/config.yaml`，配置：
 - 飞书 App ID 和 App Secret
 - 飞书多维表格 ID
-- 其他必要参数
 
-### 基础使用
-
-**一键生成文案+图片+上传飞书：**
+### 使用方式
 
 ```bash
-python3 scripts/run.py --step 2 \
-  --title "武汉过早plog｜这一碗热干面才8块钱" \
-  --content "正文内容(支持markdown)" \
-  --tags "#武汉美食 #热干面"
+# 方式一：使用 render_xhs.py (8个主题 + 4种分页模式)
+python3 scripts/render_xhs.py content.md -t sketch -m separator
+
+# 方式二：使用 render_xhs_v2.py (7种内置样式 + 智能分页)
+python3 scripts/render_xhs_v2.py content.md -s purple
 ```
 
-**仅生成文案（不渲染图片）：**
+---
 
-```bash
-python3 scripts/run.py --step 2 \
-  --title "标题" \
-  --content "正文" \
-  --no-render
-```
-
-## 📁 项目结构
+## 项目结构
 
 ```
 jiangzhui-xhs-v1/
@@ -88,67 +56,93 @@ jiangzhui-xhs-v1/
 │   └── config.yaml          # 配置文件
 ├── scripts/
 │   ├── run.py              # 主入口脚本
-│   ├── feishu_client.py    # 飞书 API 客户端
-│   ├── render_xhs.py       # 图片渲染引擎
-│   └── banned_words.py     # 违禁词检测
-├── picture/                # 生成的图片输出目录
-├── templates/              # 图片模板
+│   ├── feishu_client.py   # 飞书 API 客户端
+│   ├── render_xhs.py      # 图片渲染 V1 (8个主题)
+│   ├── render_xhs_v2.py   # 图片渲染 V2 (7种样式)
+│   ├── banned_words.py    # 违禁词检测
+│   ├── batch_process.py   # 批量处理
+│   ├── check_xhs.py      # 小红书检查
+│   ├── upload_xhs.py     # 上传脚本
+│   ├── auto_publish.py    # 自动发布
+│   ├── notify.py         # 通知模块
+│   └── assets/           # 渲染资源
+│       ├── themes/       # 主题 CSS
+│       ├── card.html    # 卡片模板
+│       ├── cover.html   # 封面模板
+│       └── styles.css   # 样式
+├── docs/                   # 文档
+├── picture/              # 生成的图片
 └── README.md
 ```
 
-## 🎨 支持的图片主题
+---
 
-- `sketch` - 手绘风格
-- `modern` - 现代简约
-- `cute` - 可爱卡通
-- `elegant` - 优雅风格
-- `vibrant` - 活力色彩
-- `minimal` - 极简主义
-- `retro` - 复古风格
-- `tech` - 科技感
+## 图片渲染
 
-使用方式：
+### V1: render_xhs.py
+
+支持 8 种主题 + 4 种分页模式：
 
 ```bash
-python3 scripts/render_xhs.py --theme sketch 内容.md
+# 默认：sketch 主题 + separator 分页
+python3 scripts/render_xhs.py content.md
+
+# 切换主题
+python3 scripts/render_xhs.py content.md -t playful-geometric
+
+# 切换分页模式
+python3 scripts/render_xhs.py content.md -m auto-split
 ```
 
-## 🔧 高级配置
+**主题 (-t)**：
+- sketch - 手绘素描风格
+- default - 默认紫色渐变
+- playful-geometric - 活泼几何风格
+- neo-brutalism - 新粗野主义
+- botanical - 植物园风格
+- professional - 专业商务风格
+- retro - 复古怀旧风格
+- terminal - 终端命令行风格
 
-### 飞书多维表格字段映射
+**分页模式 (-m)**：
+- separator - 按 --- 分隔符手动分页
+- auto-fit - 自动缩放填满固定尺寸
+- auto-split - 根据内容高度自动切分
+- dynamic - 动态调整图片高度
 
-在 `config/config.yaml` 中配置字段映射：
+### V2: render_xhs_v2.py
 
-```yaml
-feishu:
-  app_id: "your_app_id"
-  app_secret: "your_app_secret"
-  bitable_id: "your_bitable_id"
-  table_id: "your_table_id"
-  
-  field_mapping:
-    title: "标题"
-    content: "正文"
-    tags: "话题"
-    images: "封面图"
-    status: "状态"
+支持 7 种内置样式 + 智能分页：
+
+```bash
+# 默认：purple 样式
+python3 scripts/render_xhs_v2.py content.md
+
+# 切换样式
+python3 scripts/render_xhs_v2.py content.md -s mint
 ```
 
-### 违禁词自定义
+**样式 (-s)**：
+- purple - 紫韵（默认）
+- xiaohongshu - 小红书红
+- mint - 清新薄荷
+- sunset - 日落橙
+- ocean - 深海蓝
+- elegant - 优雅白
+- dark - 暗黑模式
 
-编辑 `scripts/banned_words.py` 添加自定义违禁词规则。
+---
 
-## 📝 工作流程
+## 文档
 
-1. **生成文案** → 根据输入生成小红书风格内容
-2. **违禁词检测** → 自动标记需要修改的词汇
-3. **渲染图片** → 生成封面和内容卡片
-4. **上传飞书** → 将文案和图片同步到多维表格
-5. **状态管理** → 自动更新记录状态（初稿/待发布/已发布）
+- [新手快速上手指南](docs/QUICK_START.md)
+- [完整部署指南](docs/SETUP_GUIDE.md)
+- [优化路线图](docs/ROADMAP.md)
+- [数据收集与 A/B 测试方案](docs/DATA_COLLECTION_AB_TESTING.md)
 
-## 🛠️ 开发说明
+---
 
-### 本地开发
+## 开发说明
 
 ```bash
 # 克隆项目
@@ -160,13 +154,14 @@ pip install -r requirements.txt
 
 # 配置环境
 cp config/config.yaml.example config/config.yaml
-# 编辑 config.yaml 填写必要信息
 
 # 运行测试
 python3 scripts/run.py --step 2 --title "测试" --content "测试内容"
 ```
 
-### 更新同步
+---
+
+## 更新同步
 
 ```bash
 # 拉取最新代码
@@ -178,18 +173,6 @@ git commit -m "描述你的修改"
 git push origin master
 ```
 
-## 📄 许可证
-
-MIT License
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📮 联系方式
-
-- GitHub: [@jiangzhuizzz](https://github.com/jiangzhuizzz)
-
 ---
 
-**最后更新**: 2026-03-18
+**最后更新**: 2026-03-19
