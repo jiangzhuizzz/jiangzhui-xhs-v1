@@ -67,7 +67,70 @@ AVAILABLE_THEMES = [
 ]
 
 # 分页模式
-PAGING_MODES = ['separator', 'auto-fit', 'auto-split', 'dynamic']
+PAGING_MODES = ['separator', 'auto-fit', 'auto-split', 'dynamic', 'smart']
+
+
+def count_chinese_chars(text: str) -> int:
+    """统计中文字符数量（忽略空格和标点）"""
+    # 移除非内容字符
+    text = re.sub(r'[#*\-\[\]`>\s]', '', text)
+    return len(text)
+
+
+def smart_split_content(body: str, available_height: int) -> List[str]:
+    """
+    智能分页：根据内容字数自动决定分几张卡片
+    同时考虑标题数量来估算高度
+    """
+    # 统计总字数
+    total_chars = count_chinese_chars(body)
+    # 统计标题数量
+    heading_count = len(re.findall(r'^#{1,3}\s', body, re.MULTILINE))
+    # 估算标题高度
+    heading_height = heading_count * 100
+    # 内容高度
+    content_height = available_height - heading_height
+
+    # 根据字数估算需要的卡片数
+    # 每张卡片约能容纳 800-1000 中文字（带标题和列表）
+    chars_per_card = 900
+    estimated_cards = max(1, int((total_chars + chars_per_card - 1) / chars_per_card))
+
+    # 如果只有1张，直接返回
+    if estimated_cards == 1:
+        return [body.strip()]
+
+    # 按段落分割
+    paragraphs = re.split(r'\n\n+', body)
+    paragraphs = [p.strip() for p in paragraphs if p.strip()]
+
+    if not paragraphs:
+        return [body.strip()]
+
+    # 智能分配内容到各张卡片
+    cards = []
+    current_card = []
+    current_chars = 0
+    target_chars_per_card = total_chars // estimated_cards
+
+    for para in paragraphs:
+        para_chars = count_chinese_chars(para)
+
+        # 如果当前段落加上会超过目标，检查是否需要换卡
+        if current_chars + para_chars > target_chars_per_card * 1.2 and len(cards) < estimated_cards - 1:
+            if current_card:
+                cards.append('\n\n'.join(current_card))
+                current_card = []
+                current_chars = 0
+
+        current_card.append(para)
+        current_chars += para_chars
+
+    # 添加最后一张
+    if current_card:
+        cards.append('\n\n'.join(current_card))
+
+    return cards if cards else [body.strip()]
 
 
 def parse_markdown_file(file_path: str) -> dict:
@@ -145,92 +208,6 @@ def estimate_content_height(content: str) -> int:
     return total_height
 
 
-def smart_split_content(content: str, max_height: int = 1100) -> List[str]:
-    """
-    智能拆分内容到多张卡片（基于预估高度）
-    从 render_xhs_v2.py 移植，优化 auto-split 性能
-    """
-    # 首先尝试识别内容块（以标题或空行分隔）
-    blocks = []
-    current_block = []
-    
-    lines = content.split('\n')
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        
-        # 新标题开始新块（除非是第一个）
-        if line.strip().startswith('#') and current_block:
-            blocks.append('\n'.join(current_block))
-            current_block = [line]
-        # 分隔线
-        elif line.strip() == '---':
-            if current_block:
-                blocks.append('\n'.join(current_block))
-                current_block = []
-        else:
-            current_block.append(line)
-        
-        i += 1
-    
-    if current_block:
-        blocks.append('\n'.join(current_block))
-    
-    # 如果没有明显的块边界，按段落拆分
-    if len(blocks) <= 1:
-        blocks = [b for b in content.split('\n\n') if b.strip()]
-    
-    # 合并块到卡片，确保每张卡片高度不超过限制
-    cards = []
-    current_card = []
-    current_height = 0
-    
-    for block in blocks:
-        block_height = estimate_content_height(block)
-        
-        # 如果单个块就超过限制，需要进一步拆分
-        if block_height > max_height:
-            # 如果当前卡片有内容，先保存
-            if current_card:
-                cards.append('\n\n'.join(current_card))
-                current_card = []
-                current_height = 0
-            
-            # 将大块按行拆分
-            lines = block.split('\n')
-            sub_block = []
-            sub_height = 0
-            
-            for line in lines:
-                line_height = estimate_content_height(line)
-                
-                if sub_height + line_height > max_height and sub_block:
-                    cards.append('\n'.join(sub_block))
-                    sub_block = [line]
-                    sub_height = line_height
-                else:
-                    sub_block.append(line)
-                    sub_height += line_height
-            
-            if sub_block:
-                cards.append('\n'.join(sub_block))
-        
-        # 如果当前卡片加上这个块会超，先保存当前卡片
-        elif current_height + block_height > max_height and current_card:
-            cards.append('\n\n'.join(current_card))
-            current_card = [block]
-            current_height = block_height
-        
-        # 否则加入当前卡片
-        else:
-            current_card.append(block)
-            current_height += block_height
-    
-    # 保存最后一个卡片
-    if current_card:
-        cards.append('\n\n'.join(current_card))
-    
-    return cards if cards else [content]
 
 
 def convert_markdown_to_html(md_content: str) -> str:
@@ -428,30 +405,48 @@ def generate_card_html(content: str, theme: str, page_number: int = 1,
     }
     bg = theme_backgrounds.get(theme, theme_backgrounds['default'])
     
+    # 动态计算 padding 和字体大小
+    # 根据卡片数量调整：卡片越少，padding越小，字体越大
+    if total_pages == 1:
+        # 单张卡片：最大利用空间
+        outer_padding = 20
+        inner_padding = 30
+        font_scale = 1.0
+    elif total_pages == 2:
+        outer_padding = 20
+        inner_padding = 28
+        font_scale = 0.9
+    else:
+        outer_padding = 18
+        inner_padding = 24
+        font_scale = 0.85
+
     # 根据模式设置不同的容器样式
-    if mode == 'auto-fit':
+    if mode == 'auto-fit' or mode == 'smart':
         container_style = f'''
             width: {width}px;
             height: {height}px;
             background: {bg};
             position: relative;
-            padding: 50px;
+            padding: {outer_padding}px;
             overflow: hidden;
         '''
         inner_style = f'''
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
-            padding: 60px;
-            height: calc({height}px - 100px);
+            padding: {inner_padding}px;
+            height: calc({height}px - {outer_padding * 2}px);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
             overflow: hidden;
             display: flex;
             flex-direction: column;
         '''
-        content_style = '''
+        content_style = f'''
             flex: 1;
             overflow: hidden;
+            transform: scale({font_scale});
+            transform-origin: top left;
         '''
     elif mode == 'dynamic':
         container_style = f'''
@@ -658,19 +653,65 @@ async def render_html_to_image(html_content: str, output_path: str,
             await browser.close()
 
 
-async def auto_split_content(body: str, theme: str, width: int, height: int, 
+async def auto_split_content(body: str, theme: str, width: int, height: int,
                              dpr: int = 2) -> List[str]:
     """
     自动切分内容：优化版，使用智能预估 + 浏览器验证
     先用 estimate_content_height() 快速预估，减少浏览器渲染次数
     """
-    
+
     # 内容区域的可用高度（去除 padding 等）
     available_height = height - 220  # 50*2 padding + 60*2 inner padding
-    
+
     print("  🔍 使用智能预估进行初步分页...")
-    # 第一步：使用智能预估快速分页
-    estimated_cards = smart_split_content(body, available_height)
+    # 第一步：使用 estimate_content_height 快速预估分页
+    # 识别内容块（以标题或分隔线）
+    blocks = []
+    current_block = []
+
+    for line in body.split('\n'):
+        if line.strip().startswith('#') and current_block:
+            blocks.append('\n'.join(current_block))
+            current_block = [line]
+        elif line.strip() == '---':
+            if current_block:
+                blocks.append('\n'.join(current_block))
+                current_block = []
+        else:
+            current_block.append(line)
+
+    if current_block:
+        blocks.append('\n'.join(current_block))
+
+    if len(blocks) <= 1:
+        blocks = [b for b in body.split('\n\n') if b.strip()]
+
+    # 合并块到卡片
+    estimated_cards = []
+    current_card = []
+    current_height = 0
+    max_height = available_height
+
+    for block in blocks:
+        block_height = estimate_content_height(block)
+
+        if block_height > max_height:
+            if current_card:
+                estimated_cards.append('\n\n'.join(current_card))
+                current_card = []
+                current_height = 0
+            # 拆分大块
+            estimated_cards.append(block)
+        elif current_height + block_height > max_height and current_card:
+            estimated_cards.append('\n\n'.join(current_card))
+            current_card = [block]
+            current_height = block_height
+        else:
+            current_card.append(block)
+            current_height += block_height
+
+    if current_card:
+        estimated_cards.append('\n\n'.join(current_card))
     
     print(f"  📄 预估分为 {len(estimated_cards)} 张卡片")
     
@@ -778,7 +819,13 @@ async def render_markdown_to_cards(md_file: str, output_dir: str,
     body = data['body']
     
     # 根据模式处理内容分割
-    if mode == 'auto-split':
+    if mode == 'smart':
+        # 智能分页：根据字数自动决定分几张
+        total_chars = count_chinese_chars(body)
+        print(f"  📊 检测到约 {total_chars} 中文字符")
+        available_height = height - 220
+        card_contents = smart_split_content(body, available_height)
+    elif mode == 'auto-split':
         print("  ⏳ 自动分析内容并切分...")
         card_contents = await auto_split_content(body, theme, width, height, dpr)
     else:
@@ -821,10 +868,11 @@ def main():
   sketch            - 手绘素描风格
 
 分页模式:
-  separator   - 按 --- 分隔符手动分页（默认）
+  separator   - 按 --- 分隔符手动分页
   auto-fit    - 自动缩放文字以填满固定尺寸
   auto-split  - 根据内容高度自动切分
   dynamic     - 根据内容动态调整图片高度
+  smart       - 智能分页：根据字数自动决定分几张（<500字=1张，500-1000=2张...）
 '''
     )
     parser.add_argument(
@@ -850,8 +898,8 @@ def main():
     parser.add_argument(
         '--mode', '-m',
         choices=PAGING_MODES,
-        default='auto-fit',
-        help='分页模式（默认: auto-fit）'
+        default='smart',
+        help='分页模式（默认: smart）'
     )
     parser.add_argument(
         '--width', '-w',
