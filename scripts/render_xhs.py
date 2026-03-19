@@ -79,26 +79,30 @@ def count_chinese_chars(text: str) -> int:
 
 def smart_split_content(body: str, available_height: int) -> List[str]:
     """
-    智能分页：根据内容字数自动决定分几张卡片
-    同时考虑标题数量来估算高度
+    智能分页：根据内容自动决定分几张卡片
+    目标是让每张卡片都尽量填满，控制在1-3张
     """
     # 统计总字数
     total_chars = count_chinese_chars(body)
-    # 统计标题数量
-    heading_count = len(re.findall(r'^#{1,3}\s', body, re.MULTILINE))
-    # 估算标题高度
-    heading_height = heading_count * 100
-    # 内容高度
-    content_height = available_height - heading_height
 
-    # 根据字数估算需要的卡片数
-    # 每张卡片约能容纳 800-1000 中文字（带标题和列表）
-    chars_per_card = 900
-    estimated_cards = max(1, int((total_chars + chars_per_card - 1) / chars_per_card))
+    # 智能决定卡片数：让内容尽量填满卡片
+    # 规则：
+    # - <600字：1张（用大字体填满）
+    # - 600-1000字：2张
+    # - 1000-1500字：3张
+    # - >1500字：按需增加
+    if total_chars < 600:
+        estimated_cards = 1  # 短内容用1张大卡片
+    elif total_chars < 1000:
+        estimated_cards = 2
+    elif total_chars < 1500:
+        estimated_cards = 3
+    else:
+        chars_per_card = 900
+        estimated_cards = min(5, max(3, int((total_chars + chars_per_card - 1) / chars_per_card)))
 
-    # 如果只有1张，直接返回
-    if estimated_cards == 1:
-        return [body.strip()]
+    # 限制在1-3张
+    estimated_cards = min(3, max(1, estimated_cards))
 
     # 按段落分割
     paragraphs = re.split(r'\n\n+', body)
@@ -409,17 +413,17 @@ def generate_card_html(content: str, theme: str, page_number: int = 1,
     # 根据卡片数量调整：卡片越少，padding越小，字体越大
     if total_pages == 1:
         # 单张卡片：最大利用空间
-        outer_padding = 20
-        inner_padding = 30
+        outer_padding = 10
+        inner_padding = 18
         font_scale = 1.0
     elif total_pages == 2:
-        outer_padding = 20
-        inner_padding = 28
-        font_scale = 0.9
+        outer_padding = 10
+        inner_padding = 16
+        font_scale = 0.95
     else:
-        outer_padding = 18
-        inner_padding = 24
-        font_scale = 0.85
+        outer_padding = 10
+        inner_padding = 14
+        font_scale = 0.9
 
     # 根据模式设置不同的容器样式
     if mode == 'auto-fit' or mode == 'smart':
@@ -428,26 +432,21 @@ def generate_card_html(content: str, theme: str, page_number: int = 1,
             height: {height}px;
             background: {bg};
             position: relative;
-            padding: {outer_padding}px;
+            padding: 50px;
             overflow: hidden;
         '''
         inner_style = f'''
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
-            padding: {inner_padding}px;
-            height: calc({height}px - {outer_padding * 2}px);
+            padding: 60px;
+            height: calc({height}px - 100px);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
             overflow: hidden;
             display: flex;
             flex-direction: column;
         '''
-        content_style = f'''
-            flex: 1;
-            overflow: hidden;
-            transform: scale({font_scale});
-            transform-origin: top left;
-        '''
+        content_style = 'flex: 1; overflow: hidden;'
     elif mode == 'dynamic':
         container_style = f'''
             width: {width}px;
