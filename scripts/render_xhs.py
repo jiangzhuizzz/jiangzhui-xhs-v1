@@ -850,8 +850,8 @@ def main():
     parser.add_argument(
         '--mode', '-m',
         choices=PAGING_MODES,
-        default='separator',
-        help='分页模式（默认: separator）'
+        default='auto-fit',
+        help='分页模式（默认: auto-fit）'
     )
     parser.add_argument(
         '--width', '-w',

@@ -1,0 +1,151 @@
+/* Neo-Brutalism 主题 - 新粗野主义 */
+
+:root {
+    --card-bg: #fef3c7;
+    --card-border: #000;
+    --card-shadow: 6px 6px 0 #000;
+    --card-radius: 0;
+
+    --text-primary: #000;
+    --text-secondary: #374151;
+    --text-muted: #6b7280;
+
+    --accent-color: #f43f5e;
+    --accent-secondary: #fbbf24;
+    --accent-bg: #fde68a;
+
+    --h1-size: 56px;
+    --h2-size: 44px;
+    --h3-size: 34px;
+    --p-size: 26px;
+    --list-size: 24px;
+
+    --tag-bg: #fff;
+    --tag-color: #000;
+    --tag-radius: 0;
+}
+
+.card-inner {
+    background: var(--card-bg);
+    border: 3px solid var(--card-border);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+}
+
+.card-content {
+    color: var(--text-primary);
+    font-size: var(--p-size);
+    line-height: 1.7;
+    font-weight: 500;
+}
+
+.card-content h1 {
+    font-size: var(--h1-size);
+    font-weight: 900;
+    margin: 0 0 36px 0;
+    text-transform: uppercase;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    border: 3px solid #000;
+    padding: 16px 24px;
+    background: var(--accent-secondary);
+}
+
+.card-content h2 {
+    font-size: var(--h2-size);
+    font-weight: 800;
+    margin: 40px 0 20px 0;
+    background: #000;
+    color: #fff;
+    padding: 12px 20px;
+    display: inline-block;
+    text-transform: uppercase;
+}
+
+.card-content h3 {
+    font-size: var(--h3-size);
+    font-weight: 700;
+    margin: 28px 0 14px 0;
+    border-left: 6px solid var(--accent-color);
+    padding-left: 16px;
+}
+
+.card-content p {
+    margin: 0 0 24px 0;
+}
+
+.card-content ul, .card-content ol {
+    margin: 0 0 24px 0;
+    padding-left: 32px;
+    border: 2px solid #000;
+    background: #fff;
+    padding: 24px 24px 24px 48px;
+}
+
+.card-content li {
+    margin: 10px 0;
+    font-size: var(--list-size);
+    font-weight: 600;
+}
+
+.card-content strong {
+    background: var(--accent-color);
+    color: #fff;
+    padding: 2px 8px;
+    font-weight: 800;
+}
+
+.card-content em {
+    font-style: normal;
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-decoration-color: var(--accent-color);
+}
+
+.card-content code {
+    font-family: monospace;
+    font-size: 22px;
+    background: #fff;
+    border: 2px solid #000;
+    border-radius: 0;
+    padding: 4px 10px;
+    color: #000;
+    font-weight: 700;
+}
+
+.card-content pre {
+    background: #000;
+    border-radius: 0;
+    padding: 24px;
+    overflow-x: auto;
+    margin: 24px 0;
+    border: 3px solid #000;
+}
+
+.card-content pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent-secondary);
+    font-size: 18px;
+}
+
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 36px;
+    padding-top: 20px;
+    border-top: 3px solid #000;
+}
+
+.tag {
+    background: #fff;
+    color: var(--tag-color);
+    padding: 8px 16px;
+    border-radius: var(--tag-radius);
+    font-size: 18px;
+    font-weight: 700;
+    border: 2px solid #000;
+    text-transform: uppercase;
+}

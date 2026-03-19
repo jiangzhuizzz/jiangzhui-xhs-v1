@@ -1,0 +1,187 @@
+/* Playful Geometric 主题 - 几何趣致风格 */
+
+:root {
+    --card-bg: #ffffff;
+    --card-border: none;
+    --card-shadow: 8px 8px 0 rgba(139, 92, 246, 0.3);
+    --card-radius: 24px;
+
+    --text-primary: #1f2937;
+    --text-secondary: #4b5563;
+    --text-muted: #9ca3af;
+
+    --accent-color: #8b5cf6;
+    --accent-secondary: #f472b6;
+    --accent-bg: #f5f3ff;
+
+    --h1-size: 54px;
+    --h2-size: 42px;
+    --h3-size: 32px;
+    --p-size: 26px;
+    --list-size: 24px;
+
+    --tag-bg: #ede9fe;
+    --tag-color: #7c3aed;
+    --tag-radius: 20px;
+}
+
+/* 几何装饰背景 */
+.card-inner {
+    background: var(--card-bg);
+    border: 3px solid var(--accent-color);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.card-inner::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%);
+    border-radius: 50%;
+    opacity: 0.1;
+}
+
+.card-inner::after {
+    content: '';
+    position: absolute;
+    bottom: -30px;
+    left: -30px;
+    width: 120px;
+    height: 120px;
+    background: var(--accent-secondary);
+    border-radius: 50%;
+    opacity: 0.15;
+}
+
+.card-content {
+    color: var(--text-primary);
+    font-size: var(--p-size);
+    line-height: 1.75;
+    position: relative;
+    z-index: 1;
+}
+
+.card-content h1 {
+    font-size: var(--h1-size);
+    font-weight: 800;
+    margin: 0 0 32px 0;
+    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+}
+
+.card-content h2 {
+    font-size: var(--h2-size);
+    font-weight: 700;
+    margin: 40px 0 20px 0;
+    color: var(--accent-color);
+    /* 几何风格编号 */
+    display: flex;
+    align-items: center;
+}
+
+.card-content h2::before {
+    content: '';
+    width: 8px;
+    height: 32px;
+    background: linear-gradient(to bottom, var(--accent-color), var(--accent-secondary));
+    border-radius: 4px;
+    margin-right: 16px;
+}
+
+.card-content h3 {
+    font-size: var(--h3-size);
+    font-weight: 600;
+    margin: 28px 0 16px 0;
+    color: var(--text-primary);
+}
+
+.card-content p {
+    margin: 0 0 24px 0;
+}
+
+.card-content ul, .card-content ol {
+    margin: 0 0 24px 0;
+    padding-left: 40px;
+}
+
+.card-content li {
+    margin: 12px 0;
+    font-size: var(--list-size);
+    position: relative;
+}
+
+.card-content li::marker {
+    color: var(--accent-color);
+    font-size: 1.4em;
+    font-weight: bold;
+}
+
+.card-content strong {
+    color: var(--accent-color);
+    font-weight: 700;
+}
+
+.card-content em {
+    color: var(--accent-secondary);
+    font-style: normal;
+    background: var(--accent-bg);
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.card-content code {
+    font-family: 'SF Mono', monospace;
+    font-size: 22px;
+    background: var(--accent-bg);
+    border: 2px solid var(--accent-color);
+    border-radius: 8px;
+    padding: 4px 12px;
+    color: #7c3aed;
+    font-weight: 500;
+}
+
+.card-content pre {
+    background: linear-gradient(135deg, #1f293b 0%, #312e81 100%);
+    border-radius: 16px;
+    padding: 28px;
+    overflow-x: auto;
+    margin: 28px 0;
+    border: 2px solid var(--accent-color);
+}
+
+.card-content pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #e0e7ff;
+    font-size: 18px;
+}
+
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 3px dashed var(--accent-color);
+}
+
+.tag {
+    background: var(--tag-bg);
+    color: var(--tag-color);
+    padding: 10px 20px;
+    border-radius: var(--tag-radius);
+    font-size: 20px;
+    font-weight: 600;
+    border: 2px solid var(--accent-color);
+}
